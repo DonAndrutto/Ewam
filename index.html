@@ -2205,6 +2205,48 @@
       .header-search { width:min(100%,20rem); }
     }
     @media(max-width:380px) { .header-inner { height:71px; padding:4px 8px; } .header-title { font-size:1.05rem; } }
+
+    /* One proportional row; fullscreen leaves a single reachable control. */
+    .bar-inner { display:block; max-width:36rem; }
+    .reader-toolbar { display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:2px; margin:0; }
+    .reader-toolbar .bar-btn { width:100%; min-width:0; }
+    .bar-btn:disabled { opacity:0.35; cursor:default; transform:none; }
+    body.fullscreen .reader-toolbar { display:flex; width:max-content; margin-left:auto; }
+    body.fullscreen .reader-toolbar .bar-btn:not(#btnFS),
+    body.fullscreen #scrollTopBtn, body.fullscreen .page-navigation { display:none; }
+    body.fullscreen .reader-toolbar #btnFS { width:40px; }
+    .tab-syllable { font:24px/1.4 'Jomolhari',serif; width:32px; text-align:center; }
+
+    .page-navigation { position:fixed; bottom:var(--reader-bar-h,74px); left:50%; transform:translateX(-50%);
+      z-index:45; display:flex; align-items:center; justify-content:space-between; gap:12px;
+      width:min(20rem,calc(100% - 32px)); height:36px; background:var(--bg); }
+    .page-navigation .bar-btn { width:40px; height:32px; }
+    .page-position { font:12px/1.5 'Inter',sans-serif; color:var(--text-muted); text-align:center; }
+    html.paged-reading, .paged-reading body { height:100%; overflow:hidden; overflow-anchor:none; }
+    .paged-reading *, .paged-reading *::before, .paged-reading *::after {
+      animation:none !important; transition:none !important; scroll-behavior:auto !important;
+    }
+    .paged-reading .content-area { position:fixed; top:var(--page-top); left:0; right:0;
+      height:var(--page-height); padding:0 16px; overflow:hidden;
+      font-size:min(var(--reader-fs),var(--page-font-cap)); }
+    .paged-reading .section-block { display:none; margin:0; }
+    .paged-reading .section-block.page-section { display:block; width:var(--page-width); height:100%;
+      column-width:var(--page-width); column-gap:32px; column-fill:auto; }
+    .paged-reading .block, .paged-reading .refrain-group { content-visibility:visible; contain-intrinsic-size:none; }
+    .paged-reading .block { break-inside:auto; }
+    .paged-reading .tib, .paged-reading .pho, .paged-reading .eng { orphans:2; widows:2; }
+    .paged-reading .source-heading { break-after:avoid-column; }
+    .paged-reading .source-art { max-height:calc(var(--page-height) - 8px); object-fit:contain; }
+    .paged-reading #scrollTopBtn { bottom:calc(var(--reader-bar-h,74px) + 44px); }
+    @media (orientation:landscape) and (max-height:480px) {
+      .paged-reading .header-inner { height:48px; grid-template-areas:"lead title search controls";
+        grid-template-columns:auto auto minmax(0,1fr) auto; grid-template-rows:28px; column-gap:12px; }
+      .paged-reading .header-title { font-size:1.05rem; }
+      .paged-reading .intro-btn-label { display:none; }
+    }
+    @media (prefers-reduced-motion:reduce) {
+      *, *::before, *::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
+    }
   </style>
 </head>
 
@@ -2215,6 +2257,7 @@
        never flash the wrong theme. Full state handling lives in init(). */
     try {
       var __saved = JSON.parse(localStorage.getItem('ewam-collection-settings') || 'null');
+      if (__saved && __saved.readingMode === 'pages') document.documentElement.classList.add('paged-reading');
       if (__saved && __saved.isDark) document.documentElement.setAttribute('data-theme', 'dark');
       if (__saved && __saved.lang) document.documentElement.setAttribute('lang', __saved.lang);
     } catch (e) {}
@@ -2322,7 +2365,7 @@
   <nav class="tab-bar" id="tabBar">
     <div class="tab-bar-inner">
       <button class="tab-btn active" data-tab="E" onclick="switchTab('E')">
-        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+        <span class="tab-syllable" lang="bo" aria-hidden="true">ཨེ</span>
         <span data-i18n="tabE">E</span>
       </button>
       <button class="tab-btn" data-tab="INDEX" onclick="toggleIndex()" aria-expanded="false" aria-controls="indexPanel">
@@ -2330,7 +2373,7 @@
         <span data-i18n="tabIndex">Index</span>
       </button>
       <button class="tab-btn" data-tab="WAM" onclick="switchTab('WAM')">
-        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span class="tab-syllable" lang="bo" aria-hidden="true">ཝཾ</span>
         <span data-i18n="tabWam">Wam</span>
       </button>
       <span class="tab-indicator" id="tabIndicator"></span>
@@ -2353,14 +2396,22 @@
   <div class="content-area" id="contentArea">
     </div>
 
-  <button class="scroll-top-btn" id="scrollTopBtn" onclick="scrollToTop()" data-i18n-title="scrollTop" data-i18n-aria="scrollTop" title="Back to top" aria-label="Back to top">
+  <button class="scroll-top-btn" id="scrollTopBtn" onclick="scrollToTop()" data-i18n-title="scrollTop" data-i18n-aria="scrollTop" title="Beginning of this title; tap again for the previous title" aria-label="Beginning of this title; tap again for the previous title">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
   </button>
 
+  <nav class="page-navigation" id="pageNavigation" aria-label="Page navigation" hidden>
+    <button type="button" class="bar-btn" id="btnPreviousPage" onclick="turnReadingPage(-1)" title="Previous page" aria-label="Previous page">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+    <span class="page-position" id="pagePosition" role="status" aria-live="polite" aria-atomic="true"></span>
+    <button type="button" class="bar-btn" id="btnNextPage" onclick="turnReadingPage(1)" title="Next page" aria-label="Next page">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+    </button>
+  </nav>
   <div class="bottom-bar">
     <div class="bar-inner">
-
-      <div class="bar-group">
+      <div class="bar-group reader-toolbar">
         <button class="bar-btn" onclick="changeSpeed(-1)" data-i18n-title="barSlower" data-i18n-aria="barSlower" title="Slower" aria-label="Slower">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
@@ -2371,9 +2422,9 @@
         <button class="bar-btn" onclick="changeSpeed(1)" data-i18n-title="barFaster" data-i18n-aria="barFaster" title="Faster" aria-label="Faster">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
-      </div>
-
-      <div class="bar-group">
+        <button type="button" class="bar-btn" id="btnPage" onclick="toggleReadingMode()" aria-pressed="false" data-i18n-title="barPages" data-i18n-aria="barPages" title="Page turning mode" aria-label="Page turning mode">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+        </button>
         <button class="bar-btn" id="btnFS" onclick="toggleFullScreen()" data-i18n-title="barFullscreen" data-i18n-aria="barFullscreen" title="Fullscreen" aria-label="Fullscreen">
           <svg id="iconFSEnter" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
           <svg id="iconFSExit" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
@@ -2385,9 +2436,6 @@
           <svg id="iconSun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
           <svg id="iconMoon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
-      </div>
-
-      <div class="bar-group">
         <button class="bar-btn" onclick="changeFontSize(-1)" data-i18n-title="barSmaller" data-i18n-aria="barSmaller" title="Smaller text" aria-label="Smaller text">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
         </button>
@@ -2395,7 +2443,6 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
         </button>
       </div>
-
     </div>
   </div>
 
@@ -2541,7 +2588,8 @@ const UI_STRINGS = {
     barTheme: 'Toggle theme',
     barSmaller: 'Smaller text',
     barLarger: 'Larger text',
-    scrollTop: 'Back to top',
+    barPages: 'Page turning mode',
+    scrollTop: 'Beginning of this title; tap again for the previous title',
 
     dlgDone: 'Done',
 
@@ -2589,6 +2637,7 @@ function defaultState() {
     showTranslation: false,
     activeTab: 'E',
     scrollSpeed: 2,
+    readingMode: 'scroll',
 
   };
 }
@@ -2601,6 +2650,7 @@ function loadState() {
     const parsed = JSON.parse(s);
     const merged = { ...d, ...parsed };
     if (!['E', 'WAM'].includes(merged.activeTab)) merged.activeTab = 'E';
+    if (!['scroll', 'pages'].includes(merged.readingMode)) merged.readingMode = 'scroll';
     if (!LANGS[merged.lang]) merged.lang = 'en';
     return merged;
   } catch { return defaultState(); }
@@ -8865,9 +8915,11 @@ function syncScriptToggles() {
 }
 
 function applyLangs() {
+  const anchor = captureReadingAnchor();
   syncScriptToggles();
   // Which runs are visible changes every block's height.
   invalidateGeometry();
+  if (state.readingMode === 'pages') layoutReadingPage(anchor);
 }
 
 function toggleLang(which) {
@@ -8927,6 +8979,12 @@ function switchTab(tab, opts = {}) {
   updateTabIndicator();
   if (changed) renderContent({animate:false});
   renderIndex();
+  if (state.readingMode === 'pages' && !opts.keepScroll) {
+    readingPage.section = 0;
+    readingPage.index = 0;
+    layoutReadingPage();
+    return;
+  }
   if (!opts.keepScroll) window.scrollTo({top:0, behavior:'instant'});
 }
 
@@ -9018,6 +9076,7 @@ function updateIndexLocation(force = false) {
       lo = mid + 1;
     } else hi = mid - 1;
   }
+  if (state.readingMode === 'pages') sectionIdx = readingPage.section;
   if (sectionIdx < 0 && trackedSectionNodes.length) sectionIdx = 0;
   if (!sections[sectionIdx]?.inIndex) sectionIdx = -1;
   const key = state.activeTab + ':' + sectionIdx;
@@ -9116,6 +9175,7 @@ function characterRange(node, offset) {
 }
 
 function captureReadingAnchor() {
+  if (state.readingMode === 'pages') return capturePageAnchor();
   const area = document.getElementById('contentArea');
   if (!area || !trackedBlockNodes.length) return null;
   const line = readerLine();
@@ -9150,6 +9210,12 @@ function captureReadingAnchor() {
 
 function holdReadingPosition(anchor, done) {
   if (!anchor || !anchor.block.isConnected) return;
+  if (state.readingMode === 'pages') {
+    cancelPark();
+    layoutReadingPage(anchor);
+    if (done) done();
+    return;
+  }
   cancelPark();
   const token = parkToken;
   const block = anchor.block;
@@ -9248,7 +9314,10 @@ function renderContent(opts) {
 
   area.classList.toggle('is-first-paint', animate);
   area.innerHTML = html;
-  area.querySelectorAll('img').forEach(img => img.addEventListener('load', () => { scrollHeightCache = 0; }));
+  area.querySelectorAll('img').forEach(img => img.addEventListener('load', () => {
+    scrollHeightCache = 0;
+    if (state.readingMode === 'pages') queuePageLayout();
+  }));
   trackedSectionNodes = Array.from(area.querySelectorAll('.section-block'));
   trackedBlockNodes = Array.from(area.querySelectorAll('.block[data-bid]'));
   queueIndexLocationUpdate(true);
@@ -9263,6 +9332,11 @@ function renderContent(opts) {
   }
 
   updateHeightEstimates();
+  if (state.readingMode === 'pages') {
+    readingPage.section = 0;
+    readingPage.index = 0;
+    layoutReadingPage();
+  }
 }
 
 /* Future translations retain the same source paragraph identifiers. */
@@ -9380,6 +9454,7 @@ function updateHeightEstimates() {
 
 function invalidateGeometry() {
   updateHeightEstimates();
+  if (state.readingMode === 'pages') queuePageLayout();
 }
 
 
@@ -9511,6 +9586,7 @@ function toggleAutoScroll() {
 }
 
 function startAutoScroll() {
+  if (state.readingMode === 'pages') return;
   isAutoScrolling = true;
   lastScrollTime = 0;
   scrollAccumulator = 0;
@@ -9595,6 +9671,7 @@ let currentTiltSpeed = 0;
 let tiltScrollAccumulator = 0;
 
 async function toggleTiltScroll() {
+  if (state.readingMode === 'pages') return;
   if (isAutoScrolling) stopAutoScroll();
 
   if (isTiltScrolling) {
@@ -9624,6 +9701,7 @@ async function toggleTiltScroll() {
 }
 
 function startTiltScroll() {
+  if (state.readingMode === 'pages') return;
   isTiltScrolling = true;
   tiltReferenceBeta = null;
   targetTiltSpeed = 0;
@@ -9681,6 +9759,177 @@ function tiltLoop() {
   tiltRafId = requestAnimationFrame(tiltLoop);
 }
 
+// Page each title independently. Native columns fragment text at line boxes,
+// including paragraphs taller than the viewport; only the active title lays out.
+const readingPage = {section:0, index:0, count:1, stride:0, anchor:null};
+let pageLayoutFrame = 0;
+
+function syncReadingMode() {
+  const paged = state.readingMode === 'pages';
+  document.documentElement.classList.toggle('paged-reading', paged);
+  document.getElementById('btnPage').classList.toggle('active', paged);
+  document.getElementById('btnPage').setAttribute('aria-pressed', String(paged));
+  document.getElementById('pageNavigation').hidden = !paged;
+  document.querySelectorAll('.reader-toolbar [onclick^="changeSpeed"], #btnPlay, #btnTilt').forEach(button => {
+    button.disabled = paged;
+  });
+}
+
+function toggleReadingMode() {
+  const anchor = captureReadingAnchor();
+  stopAutoScroll();
+  stopTiltScroll();
+  cancelPark();
+  closeHelp(false);
+  state.readingMode = state.readingMode === 'pages' ? 'scroll' : 'pages';
+  syncReadingMode();
+  if (state.readingMode === 'pages') {
+    window.scrollTo({top:0, behavior:'instant'});
+    layoutReadingPage(anchor);
+  } else {
+    trackedSectionNodes.forEach(section => {
+      section.classList.remove('page-section');
+      section.style.transform = '';
+    });
+    updateHeightEstimates();
+    if (anchor) holdReadingPosition({...anchor, top:readerLine()});
+  }
+  saveState();
+  updateTitleReturnButton();
+}
+
+function queuePageLayout() {
+  if (state.readingMode !== 'pages' || pageLayoutFrame) return;
+  pageLayoutFrame = requestAnimationFrame(() => {
+    pageLayoutFrame = 0;
+    if (state.readingMode === 'pages') layoutReadingPage(readingPage.anchor);
+  });
+}
+
+function layoutReadingPage(anchor = null) {
+  if (state.readingMode !== 'pages' || !trackedSectionNodes.length) return;
+  const area = document.getElementById('contentArea');
+  const target = anchor?.block.closest('.section-block');
+  if (target) readingPage.section = trackedSectionNodes.indexOf(target);
+  readingPage.section = Math.max(0, Math.min(trackedSectionNodes.length - 1, readingPage.section));
+  const section = trackedSectionNodes[readingPage.section];
+  trackedSectionNodes.forEach(node => node.classList.toggle('page-section', node === section));
+  const barHeight = document.querySelector('.bottom-bar').getBoundingClientRect().height;
+  document.documentElement.style.setProperty('--reader-bar-h', barHeight + 'px');
+  const top = isFullScreen ? 12 : document.getElementById('stickyStack').getBoundingClientRect().bottom + 12;
+  const height = Math.max(32, (window.visualViewport?.height || innerHeight) - top - barHeight - (isFullScreen ? 12 : 48));
+  area.style.setProperty('--page-top', top + 'px');
+  area.style.setProperty('--page-height', height + 'px');
+  // A very short landscape viewport must still fit the largest heading's line.
+  area.style.setProperty('--page-font-cap', Math.max(4, Math.floor((height - 8) / 3.7)) + 'px');
+  const width = area.clientWidth - 32;
+  area.style.setProperty('--page-width', width + 'px');
+  readingPage.stride = width + 32;
+  readingPage.count = Math.max(1, Math.ceil((section.scrollWidth + 31) / readingPage.stride));
+  if (target) {
+    const rect = anchor.range?.getClientRects()[0] || anchor.block.getClientRects()[0];
+    if (rect) readingPage.index = Math.floor((rect.left - section.getBoundingClientRect().left + 1) / readingPage.stride);
+  }
+  readingPage.index = Math.max(0, Math.min(readingPage.count - 1, readingPage.index));
+  showReadingPage();
+}
+
+function showReadingPage() {
+  const section = trackedSectionNodes[readingPage.section];
+  if (!section) return;
+  section.style.transform = 'translateX(' + (-readingPage.index * readingPage.stride) + 'px)';
+  const position = document.getElementById('pagePosition');
+  position.textContent = (readingPage.index + 1) + ' / ' + readingPage.count;
+  position.setAttribute('aria-label', 'Page ' + (readingPage.index + 1) + ' of ' + readingPage.count + ', title ' +
+    (readingPage.section + 1) + ' of ' + trackedSectionNodes.length);
+  document.getElementById('btnPreviousPage').disabled = readingPage.section === 0 && readingPage.index === 0;
+  document.getElementById('btnNextPage').disabled = readingPage.section === trackedSectionNodes.length - 1 && readingPage.index === readingPage.count - 1;
+  readingPage.anchor = capturePageAnchor();
+  queueIndexLocationUpdate(true);
+  updateTitleReturnButton();
+}
+
+function capturePageAnchor() {
+  const section = trackedSectionNodes[readingPage.section];
+  if (!section) return null;
+  const area = document.getElementById('contentArea').getBoundingClientRect();
+  const left = area.left + 16, right = area.right - 16;
+  const walker = document.createTreeWalker(section, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) {
+    if (!node.length) continue;
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    if (!Array.from(range.getClientRects()).some(rect => rect.width && rect.right > left && rect.left < right && rect.bottom > area.top && rect.top < area.bottom)) continue;
+    // Find the first character on this column, retaining its DOM identity on reflow.
+    let lo = 0, hi = node.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      const rect = characterRange(node, mid).getBoundingClientRect();
+      if (rect.right <= left) lo = mid + 1;
+      else hi = mid;
+    }
+    const character = characterRange(node, lo);
+    return {block:node.parentElement.closest('.block') || section, range:character, top:character.getBoundingClientRect().top};
+  }
+  const block = Array.from(section.querySelectorAll('.block')).find(block =>
+    Array.from(block.getClientRects()).some(rect => rect.right > left && rect.left < right));
+  return {block:block || section, range:null, top:area.top};
+}
+
+function turnReadingPage(direction) {
+  if (state.readingMode !== 'pages') return;
+  cancelPark();
+  const next = readingPage.index + direction;
+  if (next >= 0 && next < readingPage.count) {
+    readingPage.index = next;
+    showReadingPage();
+  } else {
+    const section = readingPage.section + direction;
+    if (section < 0 || section >= trackedSectionNodes.length) return;
+    readingPage.section = section;
+    readingPage.index = direction < 0 ? Number.MAX_SAFE_INTEGER : 0;
+    layoutReadingPage();
+  }
+}
+
+function pageInputBlocked(target) {
+  return target.closest('input,textarea,select,[contenteditable="true"],a,button,[role="dialog"],.index-panel,.search-panel') ||
+    helpOpen || introOpen || welcomeOpen || document.getElementById('indexPanel').classList.contains('open') || !document.getElementById('searchPanel').hidden;
+}
+
+document.getElementById('contentArea').addEventListener('click', e => {
+  if (state.readingMode !== 'pages' || pageInputBlocked(e.target) || !window.getSelection().isCollapsed) return;
+  const bounds = e.currentTarget.getBoundingClientRect();
+  const fraction = (e.clientX - bounds.left) / bounds.width;
+  if (fraction < 0.25) turnReadingPage(-1);
+  else if (fraction > 0.75) turnReadingPage(1);
+});
+document.addEventListener('keydown', e => {
+  const button = e.target.closest('button');
+  if (button && (e.key === ' ' || e.key === 'Enter')) return;
+  if (state.readingMode !== 'pages' || pageInputBlocked(button?.parentElement || e.target) || e.altKey || e.ctrlKey || e.metaKey) return;
+  const direction = ['ArrowRight','ArrowDown','PageDown',' '].includes(e.key) ? (e.shiftKey && e.key === ' ' ? -1 : 1) :
+    ['ArrowLeft','ArrowUp','PageUp'].includes(e.key) ? -1 : 0;
+  if (direction) { e.preventDefault(); turnReadingPage(direction); }
+  else if (e.key === 'Home' || e.key === 'End') {
+    e.preventDefault();
+    readingPage.index = e.key === 'Home' ? 0 : readingPage.count - 1;
+    showReadingPage();
+  }
+});
+let lastPageWheel = 0;
+window.addEventListener('wheel', e => {
+  if (state.readingMode !== 'pages' || pageInputBlocked(e.target) || e.ctrlKey) return;
+  e.preventDefault();
+  const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  if (Math.abs(delta) >= 10 && performance.now() - lastPageWheel > 300) {
+    lastPageWheel = performance.now();
+    turnReadingPage(delta > 0 ? 1 : -1);
+  }
+}, {passive:false});
+window.visualViewport?.addEventListener('resize', queuePageLayout);
+
 // ══════════════════════════════════════════════════════
 // FULLSCREEN
 // ══════════════════════════════════════════════════════
@@ -9691,21 +9940,20 @@ function updateFSIcon() {
   document.getElementById('iconFSEnter').style.display = isFullScreen ? 'none' : 'block';
   document.getElementById('iconFSExit').style.display = isFullScreen ? 'block' : 'none';
   document.getElementById('btnFS').classList.toggle('active', isFullScreen);
+  document.getElementById('btnFS').setAttribute('aria-pressed', String(isFullScreen));
+  document.getElementById('btnFS').setAttribute('aria-label', isFullScreen ? 'Exit fullscreen' : t('barFullscreen'));
 }
 
 function toggleFullScreen() {
-  const anchor = document.querySelector('.content-area .section-block') || document.getElementById('contentArea');
-  const beforeTop = anchor ? anchor.getBoundingClientRect().top : 0;
-
+  const anchor = captureReadingAnchor();
+  closeIndex();
+  closeSearch();
   isFullScreen = !isFullScreen;
   document.body.classList.toggle('fullscreen', isFullScreen);
   updateFSIcon();
 
-  if (anchor) {
-    const afterTop = anchor.getBoundingClientRect().top;
-    const delta = afterTop - beforeTop;
-    if (delta) window.scrollBy(0, delta);
-  }
+  if (state.readingMode === 'pages') layoutReadingPage(anchor);
+  else if (anchor) holdReadingPosition({...anchor, top:readerLine()});
 
   if (isFullScreen && document.documentElement.requestFullscreen) {
     document.documentElement.requestFullscreen().catch(() => {});
@@ -9717,9 +9965,12 @@ function toggleFullScreen() {
 // Sync if user exits fullscreen via Escape
 document.addEventListener('fullscreenchange', () => {
   if (!document.fullscreenElement && isFullScreen) {
+    const anchor = captureReadingAnchor();
     isFullScreen = false;
     document.body.classList.remove('fullscreen');
     updateFSIcon();
+    if (state.readingMode === 'pages') layoutReadingPage(anchor);
+    else if (anchor) holdReadingPosition({...anchor, top:readerLine()});
   }
 });
 
@@ -9727,11 +9978,32 @@ document.addEventListener('fullscreenchange', () => {
 // SCROLL-TO-TOP BUTTON
 // ══════════════════════════════════════════════════════
 
-window.addEventListener('scroll', () => {
-  document.getElementById('scrollTopBtn').classList.toggle('visible', window.scrollY > 300);
-});
+function updateTitleReturnButton() {
+  const visible = state.readingMode === 'pages' ? readingPage.section > 0 || readingPage.index > 0 : window.scrollY > 300;
+  document.getElementById('scrollTopBtn').classList.toggle('visible', visible);
+}
+window.addEventListener('scroll', updateTitleReturnButton, {passive:true});
 
-function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+function scrollToTop() {
+  stopAutoScroll();
+  stopTiltScroll();
+  if (state.readingMode === 'pages') {
+    if (readingPage.index === 0) readingPage.section = Math.max(0, readingPage.section - 1);
+    readingPage.index = 0;
+    layoutReadingPage();
+    return;
+  }
+  const line = readerLine();
+  let index = 0;
+  for (let i = 0; i < trackedSectionNodes.length; i++) {
+    if (trackedSectionNodes[i].getBoundingClientRect().top > line + 2) break;
+    index = i;
+  }
+  // At a title's beginning, a second tap advances to the previous title.
+  const section = trackedSectionNodes[index];
+  if (section && Math.abs(section.getBoundingClientRect().top - line) <= 3) index = Math.max(0, index - 1);
+  scrollToSectionEl(index, false);
+}
 
 // Search the source data, including the other volume, without laying it out.
 const SEARCH_LIMIT = 50;
@@ -9901,6 +10173,7 @@ function updateTabIndicator() {
 window.addEventListener('resize', measureStackHeight);
 window.addEventListener('resize', updateTabIndicator);
 window.addEventListener('resize', () => {
+  if (state.readingMode === 'pages') { queuePageLayout(); return; }
   const anchor = captureReadingAnchor();
   invalidateGeometry();
   if (anchor && !document.getElementById('searchPanel').contains(document.activeElement) && document.activeElement !== readerSearch) holdReadingPosition(anchor);
@@ -9940,6 +10213,7 @@ const HELP_TARGETS = [
   { sel: '.bar-btn[onclick="changeSpeed(-1)"]',    key: 'barSlower' },
   { sel: '#btnPlay',                               key: 'barPlayPause' },
   { sel: '.bar-btn[onclick="changeSpeed(1)"]',     key: 'barFaster' },
+  { sel: '#btnPage',                               key: 'barPages' },
   { sel: '#btnFS',                                 key: 'barFullscreen' },
   { sel: '#btnTilt',                               key: 'barTilt' },
   { sel: '#btnTheme',                              key: 'barTheme' },
@@ -10183,7 +10457,7 @@ window.addEventListener('hashchange', () => closeHelp(false));
 // *italic* are honoured; everything else is escaped.
 // ══════════════════════════════════════════════════════
 
-const INTRO_L10N = {"en": {"about": [{"p": "The **Ewam Collection** is a digital edition of the E and Wam volumes of liturgies used at Gangteng Monastery and its branches in the Pema Lingpa lineage, under the patronage of Gangteng Tulku Rinpoche."}, {"p": "This edition presents the Tibetan texts in their original order, including the opening contents lists, introductory material, instructions, colophons and embedded lettering. The black and blue text distinction is preserved in both reading themes."}], "howTo": [{"p": "Select **E** or **Wam** to read a volume continuously. **Index** lists the individual texts from both volumes; expand a volume and select a Tibetan title to jump to that text."}, {"p": "Use **Play/Pause** to start or stop automatic scrolling, and **Slower** or **Faster** to adjust its speed. Touching or manually scrolling the page temporarily pauses automatic movement."}, {"p": "**Tilt scroll** moves the text as you change the angle of your device. It may ask for motion access when first enabled. Automatic scrolling and tilt scrolling are used separately."}, {"p": "Use **Fullscreen** for reading mode, the text size controls to adjust the lettering, and the sun/moon button to switch between light and dark themes. **Help** labels the controls currently on screen."}, {"p": "This edition contains Tibetan text only. Translations and phonetic pronunciation will be added in future editions."}], "welcome": [{"p": "The **Ewam Collection** brings together the E and Wam volumes of Tibetan liturgies in the Pema Lingpa lineage, used at Gangteng Monastery and its branches."}, {"p": "Read either volume continuously, or open the **Index** to find an individual text."}]}};
+const INTRO_L10N = {"en": {"about": [{"p": "The **Ewam Collection** is a digital edition of the E and Wam volumes of liturgies used at Gangteng Monastery and its branches in the Pema Lingpa lineage, under the patronage of Gangteng Tulku Rinpoche."}, {"p": "This edition presents the Tibetan texts in their original order, including the opening contents lists, introductory material, instructions, colophons and embedded lettering. The black and blue text distinction is preserved in both reading themes."}], "howTo": [{"p": "Select **E** or **Wam** to read a volume continuously. **Index** lists the individual texts from both volumes; expand a volume and select a Tibetan title to jump to that text."}, {"p": "Select the **page icon** between Faster (+) and Fullscreen to turn pages without animation. Use the arrows below the text, tap the left or right edge, or use the arrow keys, Page Up/Down, or Space (Shift+Space to go back). Pages keep whole lines and adapt to portrait, landscape, and text size changes. Select the page icon again to return to scrolling. Automatic and tilt scrolling are paused in page mode."}, {"p": "Use **Play/Pause** to start or stop automatic scrolling, and **Slower** or **Faster** to adjust its speed. Touching or manually scrolling the page temporarily pauses automatic movement."}, {"p": "**Tilt scroll** moves the text as you change the angle of your device. It may ask for motion access when first enabled. Automatic scrolling and tilt scrolling are used separately."}, {"p": "Use **Fullscreen** to hide the header and bottom options. Only the expand/contract icon remains; tap it to restore the controls. In page mode, edge taps and keyboard page turns still work in fullscreen. The text size controls adjust the lettering, and the sun/moon button switches themes. **Help** labels the visible controls."}, {"p": "The **up arrow** returns to the beginning of the current title. Tap it again to go to the preceding title; further taps continue backward through the volume."}, {"p": "This edition contains Tibetan text only. Translations and phonetic pronunciation will be added in future editions."}], "welcome": [{"p": "The **Ewam Collection** brings together the E and Wam volumes of Tibetan liturgies in the Pema Lingpa lineage, used at Gangteng Monastery and its branches."}, {"p": "Read either volume continuously, or open the **Index** to find an individual text."}]}};
 
 function introBundle() {
   return INTRO_L10N[state.lang] || INTRO_L10N.en;
@@ -10402,6 +10676,7 @@ window.addEventListener('hashchange', () => closeIntro(false));
 
 (function init() {
   applyTheme();
+  syncReadingMode();
 
   // Set active tab buttons
   document.querySelectorAll('.tab-btn').forEach(b => {
@@ -10427,6 +10702,7 @@ window.addEventListener('hashchange', () => closeIntro(false));
       updateTabIndicator();
       // Font loading can move the current index boundary.
       queueIndexLocationUpdate(true);
+      queuePageLayout();
     });
   } else {
     queueIndexLocationUpdate(true);
