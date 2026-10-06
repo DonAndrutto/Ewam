@@ -14,6 +14,11 @@ async function main() {
   const settled = () => page.waitForFunction(() => readerReady && parkFrame === 0 && !restoringPosition && pageLayoutFrame === 0);
   const send = (type, points) => cdp.send('Input.dispatchTouchEvent', {type,
     touchPoints:points.map(([x,y,id]) => ({x,y,id,radiusX:3,radiusY:3,force:1}))});
+  async function touchListeners() {
+    const {result} = await cdp.send('Runtime.evaluate', {expression:'document.getElementById("contentArea")'});
+    const {listeners} = await cdp.send('DOMDebugger.getEventListeners', {objectId:result.objectId});
+    return listeners.filter(listener => listener.type.startsWith('touch')).map(listener => ({type:listener.type,passive:listener.passive}));
+  }
   async function swipe(from, to, cancel = false) {
     await send('touchStart', [[...from,1]]);
     for (let step=1; step<=5; step++) {
@@ -48,7 +53,9 @@ async function main() {
     await page.getByRole('button',{name:'Enter — Ewam Collection',exact:true}).click();
     await page.locator('#welcomeCard').getByRole('button',{name:'Prayer Collection',exact:true}).click();
     await settled();
+    assert.deepEqual(await touchListeners(),[],'scroll mode has no custom touch handlers on arrival');
     await page.locator('#btnPage').click();
+    assert.equal((await touchListeners()).filter(listener => !listener.passive).length,3,'page mode installs touch handlers once');
     await page.evaluate(() => {readingPage.section=1; readingPage.index=0; layoutReadingPage();});
     await swipe([320,250],[70,250]);
     assert.deepEqual(await position(), {section:1,index:1}, 'left swipe advances once');
@@ -111,14 +118,24 @@ async function main() {
     assert.notDeepEqual(await position(),fullscreenBefore,'fullscreen swipe');
     await page.evaluate(() => {isFullScreen=false;document.body.classList.remove('fullscreen');updateFSIcon();layoutReadingPage();});
     await page.locator('#btnPage').click();
+    assert.deepEqual(await touchListeners(),[],'switching to scroll mode removes all custom touch handlers');
     await page.evaluate(() => window.scrollTo(0,0));
     await swipe([190,600],[190,250]);
     await page.waitForFunction(() => scrollY > 50);
     assert.equal(await page.evaluate(() => state.readingMode),'scroll','native vertical scrolling remains');
     await pinch(160,90);
-    assert.equal(await page.evaluate(() => state.fontSize),15,'scroll-mode pinch');
+    assert.equal(await page.evaluate(() => state.fontSize),16,'scroll-mode pinch does not resize');
     await pinch(90,160);
-    assert.equal(await page.evaluate(() => state.fontSize),16,'scroll-mode spread');
+    assert.equal(await page.evaluate(() => state.fontSize),16,'scroll-mode spread does not resize');
+
+    // Repeated mode changes must not accumulate blocking handlers.
+    for (let i=0;i<3;i++) {
+      await page.locator('#btnPage').click();
+      assert.equal((await touchListeners()).filter(listener => !listener.passive).length,3);
+      await page.locator('#btnPage').click();
+      assert.deepEqual(await touchListeners(),[]);
+    }
+    await page.locator('#btnPage').click();
 
     // Bounds and persistence use the normal sizing path in each collection.
     await page.evaluate(() => {state.fontSize=12;applyFontSize();});
@@ -134,7 +151,7 @@ async function main() {
     await page.reload();await settled();
     assert.equal(await page.evaluate(() => state.fontSize),17,'gesture size persists');
     assert.deepEqual(errors,[]);
-    console.log('PASS: native touch swipes/pinches, one-unit sizing, no double turns, tap controls, selection, overlays, text boundaries, fullscreen, vertical scrolling, bounds, both collections and persistence.');
+    console.log('PASS: page-only swipes/pinches, no custom touch listeners in scroll mode, native scrolling, mode changes, one-unit sizing, tap controls, selection, overlays, text boundaries, fullscreen, bounds and persistence.');
   } finally {await browser.close();server.close();}
 }
 main().catch(error => {console.error(error);server.close();process.exitCode=1;});

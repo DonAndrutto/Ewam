@@ -25,8 +25,9 @@ or landscape. Turn pages with arrows, left/right edge taps, keyboard arrows,
 Page Up/Down, or Space / Shift+Space. Index and search navigate to the right page.
 In page mode, swipe left for the next page and right for the previous page.
 Pinch inward to decrease the text size by 1, or spread two fingers to increase
-it by 1, once per gesture. These sizing gestures work in both reading modes
-and retain the reading position. Vertical scrolling and normal taps are retained.
+it by 1, once per gesture in page mode, retaining the reading position.
+All custom touch gesture handlers are removed in scroll mode to keep scrolling
+native. Use the toolbar controls to resize text in scroll mode.
 Search covers the active collection (both E and Wam when E Wam is selected).
 
 Fullscreen hides the header and controls except its exit icon. Edge taps and
