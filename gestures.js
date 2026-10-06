@@ -5,13 +5,13 @@ function installReaderGestures(area, {isPageMode, isBlocked, turnPage, resizeTex
   let ignoreClickUntil = 0;
   const distance = touches => Math.hypot(touches[0].clientX - touches[1].clientX,
     touches[0].clientY - touches[1].clientY);
-  const eligible = target => !isBlocked(target) && window.getSelection().isCollapsed;
+  const eligible = target => isPageMode() && !isBlocked(target) && window.getSelection().isCollapsed;
   const consume = event => {
     if (event.cancelable) event.preventDefault();
     ignoreClickUntil = performance.now() + 700;
   };
 
-  area.addEventListener('touchstart', event => {
+  function onTouchStart(event) {
     const touches = [...event.touches];
     if (!eligible(event.target) || touches.some(touch => !area.contains(touch.target)) || touches.length > 2) {
       gesture = {kind:'ignore'};
@@ -28,9 +28,9 @@ function installReaderGestures(area, {isPageMode, isBlocked, turnPage, resizeTex
         lastX:touch.clientX, lastY:touch.clientY, started:performance.now(),
         paged:isPageMode(), vertical:false};
     }
-  }, {passive:false});
+  }
 
-  area.addEventListener('touchmove', event => {
+  function onTouchMove(event) {
     if (!gesture || gesture.kind === 'ignore') return;
     if (!eligible(event.target)) { gesture = {kind:'ignore'}; return; }
     const touches = [...event.touches];
@@ -46,9 +46,9 @@ function installReaderGestures(area, {isPageMode, isBlocked, turnPage, resizeTex
     const dx = Math.abs(gesture.lastX - gesture.x), dy = Math.abs(gesture.lastY - gesture.y);
     if (dy > 12 && dy > dx) gesture.vertical = true;
     if (gesture.paged && !gesture.vertical && dx > 8 && dx > dy * 1.4) consume(event);
-  }, {passive:false});
+  }
 
-  area.addEventListener('touchend', event => {
+  function onTouchEnd(event) {
     if (!gesture) return;
     if (gesture.kind === 'pinch') {
       consume(event);
@@ -71,19 +71,44 @@ function installReaderGestures(area, {isPageMode, isBlocked, turnPage, resizeTex
       }
     }
     if (!event.touches.length) gesture = null;
-  }, {passive:false});
+  }
 
-  area.addEventListener('touchcancel', () => {
+  function onTouchCancel() {
     if (gesture?.kind === 'pinch') ignoreClickUntil = performance.now() + 700;
     gesture = null;
-  }, {passive:true});
+  }
 
   // Some browsers synthesize an edge-tap click after a swipe/pinch. Do not
   // turn a second page; ordinary taps and keyboard activation still work.
-  area.addEventListener('click', event => {
+  function onClick(event) {
     if (event.detail && performance.now() < ignoreClickUntil) {
       event.preventDefault();
       event.stopImmediatePropagation();
     }
-  }, {capture:true});
+  }
+
+  // Non-passive touch listeners make the browser wait for JavaScript before
+  // scrolling. Register them only while pages own the gesture, and remove
+  // them entirely when scrolling is native again.
+  const listeners = [
+    ['touchstart', onTouchStart, {passive:false}],
+    ['touchmove', onTouchMove, {passive:false}],
+    ['touchend', onTouchEnd, {passive:false}],
+    ['touchcancel', onTouchCancel, {passive:true}],
+    ['click', onClick, {capture:true}]
+  ];
+  let enabled = false;
+  function syncMode() {
+    const next = isPageMode();
+    if (next === enabled) return;
+    gesture = null;
+    ignoreClickUntil = 0;
+    enabled = next;
+    for (const [type, listener, options] of listeners) {
+      if (enabled) area.addEventListener(type, listener, options);
+      else area.removeEventListener(type, listener, options);
+    }
+  }
+  syncMode();
+  return {syncMode};
 }
