@@ -1,4 +1,4 @@
-// Keep the reader self-contained. Source artwork is preserved verbatim;
+// Keep the reader and offline cache on the same branding assets;
 // only the launch icons are resized, without changing the lettering.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -21,11 +21,11 @@ async function main() {
     .composite([{input:inset,left:51,top:51}]).png().toBuffer();
   fs.writeFileSync(path.join(assets, 'icon-maskable-512.png'), maskable);
   const head = `<!-- EWAM_BRANDING_HEAD_START -->
-  <link rel="icon" type="image/png" sizes="32x32" href="${icons[32]}" />
-  <link rel="apple-touch-icon" sizes="180x180" href="${icons[180]}" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/branding/icon-32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/branding/icon-180.png" />
   <!-- EWAM_BRANDING_HEAD_END -->`;
-  const portrait = dataURL('jpeg', fs.readFileSync(path.join(assets, 'entrance-portrait.jpg')));
-  const landscape = dataURL('jpeg', fs.readFileSync(path.join(assets, 'entrance-landscape.jpg')));
+  const portrait = 'assets/branding/entrance-portrait.jpg';
+  const landscape = 'assets/branding/entrance-landscape.jpg';
   const entrance = `<!-- EWAM_BRANDING_ENTRANCE_START -->
       <picture class="ewam-entrance-art" aria-hidden="true">
         <source media="(orientation: landscape)" srcset="${landscape}" />
@@ -33,20 +33,12 @@ async function main() {
       </picture>
       <span class="yk-enter-hint" data-i18n="loaderHint">Tap or press Enter</span>
       <!-- EWAM_BRANDING_ENTRANCE_END -->`;
-  const manifest = `/* EWAM_BRANDING_MANIFEST_START */
-    const manifest = {name:"Ewam Collection",short_name:"Ewam Collection",id:base,start_url:base,scope:base,display:"standalone",background_color:"#080e18",theme_color:"#080e18",icons:${JSON.stringify([
-      {src:icons[192],sizes:'192x192',type:'image/png',purpose:'any'},
-      {src:icons[512],sizes:'512x512',type:'image/png',purpose:'any'},
-      {src:dataURL('png',maskable),sizes:'512x512',type:'image/png',purpose:'maskable'}
-    ])}};
-    /* EWAM_BRANDING_MANIFEST_END */`;
   const targets = process.argv.slice(2);
   for (const file of targets.length ? targets : [path.join(root, 'index.html')]) {
     let html = fs.readFileSync(file, 'utf8');
     for (const [pattern, replacement] of [
       [/<!-- EWAM_BRANDING_HEAD_START -->[\s\S]*?<!-- EWAM_BRANDING_HEAD_END -->/, head],
-      [/<!-- EWAM_BRANDING_ENTRANCE_START -->[\s\S]*?<!-- EWAM_BRANDING_ENTRANCE_END -->/, entrance],
-      [/\/\* EWAM_BRANDING_MANIFEST_START \*\/[\s\S]*?\/\* EWAM_BRANDING_MANIFEST_END \*\//, manifest]
+      [/<!-- EWAM_BRANDING_ENTRANCE_START -->[\s\S]*?<!-- EWAM_BRANDING_ENTRANCE_END -->/, entrance]
     ]) {
       if (!pattern.test(html)) throw new Error(`Missing branding marker in ${file}`);
       html = html.replace(pattern, () => replacement);

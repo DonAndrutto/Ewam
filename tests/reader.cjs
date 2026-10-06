@@ -5,10 +5,7 @@ const http = require('node:http');
 const {chromium} = require('playwright');
 
 const root = path.resolve(__dirname, '..');
-const server = http.createServer((req, res) => {
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.end(fs.readFileSync(path.join(root, 'index.html')));
-});
+const server = require('./server.cjs').createServer();
 
 async function main() {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
