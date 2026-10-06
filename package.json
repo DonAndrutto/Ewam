@@ -1,6 +1,10 @@
 {
   "name": "ewam-reader",
   "private": true,
-  "scripts": { "test": "node tests/reader.cjs" },
+  "scripts": {
+    "build": "node scripts/build-offline.cjs",
+    "dev": "node tests/server.cjs",
+    "test": "node tests/reader.cjs && node tests/collections.cjs"
+  },
   "devDependencies": { "playwright": "1.62.1" }
 }
