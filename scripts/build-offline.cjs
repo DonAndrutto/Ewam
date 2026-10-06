@@ -8,7 +8,7 @@ function files(dir) {
   return fs.readdirSync(path.join(root, dir), {withFileTypes:true})
     .flatMap(entry => entry.isDirectory() ? files(dir + '/' + entry.name) : [dir + '/' + entry.name]);
 }
-const assets = ['index.html','app.js','collections.js','collections.css','manifest.webmanifest',
+const assets = ['index.html','app.js','collections.js','collections.css','gestures.js','manifest.webmanifest',
   'content/ewam.js','content/prayers.js', ...files('assets/fonts'), ...files('assets/branding')].sort();
 const hash = crypto.createHash('sha256');
 for (const file of assets) hash.update(file).update(fs.readFileSync(path.join(root, file)));

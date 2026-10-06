@@ -23,6 +23,10 @@ The page icon between **+** and **Fullscreen** switches between scrolling and
 page turning. Pages use native columns, keep whole lines and reflow in portrait
 or landscape. Turn pages with arrows, left/right edge taps, keyboard arrows,
 Page Up/Down, or Space / Shift+Space. Index and search navigate to the right page.
+In page mode, swipe left for the next page and right for the previous page.
+Pinch inward to decrease the text size by 1, or spread two fingers to increase
+it by 1, once per gesture. These sizing gestures work in both reading modes
+and retain the reading position. Vertical scrolling and normal taps are retained.
 Search covers the active collection (both E and Wam when E Wam is selected).
 
 Fullscreen hides the header and controls except its exit icon. Edge taps and
@@ -50,6 +54,7 @@ activate an update. Caches are isolated to this app's deployment scope.
 - `index.html`: existing layout and styles, responsive entrance and app shell.
 - `app.js`: shared reader, page layout, navigation, index, search and help.
 - `collections.js` / `collections.css`: collection picker and saved positions.
+- `gestures.js`: shared swipe and pinch handling, ready for the other readers.
 - `content/ewam.js`: original E/Wam data, lettering images and contents links.
 - `content/prayers.js`: generated prayer data, source metadata and stable IDs.
 - `assets/fonts/`: local versions of the original Google Fonts and OFL notices.

@@ -312,8 +312,8 @@ function toggleLang(which) {
 // ══════════════════════════════════════════════════════
 
 /* Keep the visible character, not a pixel offset in the entire volume. */
-function changeFontSize(delta) {
-  const next = Math.max(12, Math.min(40, state.fontSize + delta * 2));
+function changeFontSize(delta, step = 2) {
+  const next = Math.max(12, Math.min(40, state.fontSize + delta * step));
   if (next === state.fontSize) return;
   const anchor = captureReadingAnchor();
   stopAutoScroll();
@@ -1301,6 +1301,13 @@ function pageInputBlocked(target) {
     helpOpen || introOpen || welcomeOpen || document.getElementById('indexPanel').classList.contains('open') || !document.getElementById('searchPanel').hidden;
 }
 
+installReaderGestures(document.getElementById('contentArea'), {
+  isPageMode:() => state.readingMode === 'pages',
+  isBlocked:pageInputBlocked,
+  turnPage:turnReadingPage,
+  resizeText:delta => changeFontSize(delta, 1)
+});
+
 document.getElementById('contentArea').addEventListener('click', e => {
   if (state.readingMode !== 'pages' || pageInputBlocked(e.target) || !window.getSelection().isCollapsed) return;
   const bounds = e.currentTarget.getBoundingClientRect();
@@ -1860,7 +1867,7 @@ window.addEventListener('hashchange', () => closeHelp(false));
 // *italic* are honoured; everything else is escaped.
 // ══════════════════════════════════════════════════════
 
-const INTRO_L10N = {"en": {"about": [{"p": "The **Ewam Collection** is a digital edition of the E and Wam volumes of liturgies used at Gangteng Monastery and its branches in the Pema Lingpa lineage, under the patronage of Gangteng Tulku Rinpoche."}, {"p": "This edition presents the Tibetan texts in their original order, including the opening contents lists, introductory material, instructions, colophons and embedded lettering. The black and blue text distinction is preserved in both reading themes."}], "howTo": [{"p": "Select **E** or **Wam** to read a volume continuously. **Index** lists the individual texts from both volumes; expand a volume and select a Tibetan title to jump to that text."}, {"p": "Select the **page icon** between Faster (+) and Fullscreen to turn pages without animation. Use the arrows below the text, tap the left or right edge, or use the arrow keys, Page Up/Down, or Space (Shift+Space to go back). Pages keep whole lines and adapt to portrait, landscape, and text size changes. Select the page icon again to return to scrolling. Automatic and tilt scrolling are paused in page mode."}, {"p": "Use **Play/Pause** to start or stop automatic scrolling, and **Slower** or **Faster** to adjust its speed. Touching or manually scrolling the page temporarily pauses automatic movement."}, {"p": "**Tilt scroll** moves the text as you change the angle of your device. It may ask for motion access when first enabled. Automatic scrolling and tilt scrolling are used separately."}, {"p": "Use **Fullscreen** to hide the header and bottom options. Only the expand/contract icon remains; tap it to restore the controls. In page mode, edge taps and keyboard page turns still work in fullscreen. The text size controls adjust the lettering, and the sun/moon button switches themes. **Help** labels the visible controls."}, {"p": "The **up arrow** returns to the beginning of the current title. Tap it again to go to the preceding title; further taps continue backward through the volume."}, {"p": "This edition contains Tibetan text only. Translations and phonetic pronunciation will be added in future editions."}], "welcome": [{"p": "The **Ewam Collection** brings together the E and Wam volumes of Tibetan liturgies in the Pema Lingpa lineage, used at Gangteng Monastery and its branches."}, {"p": "Read either volume continuously, or open the **Index** to find an individual text."}]}};
+const INTRO_L10N = {"en": {"about": [{"p": "The **Ewam Collection** is a digital edition of the E and Wam volumes of liturgies used at Gangteng Monastery and its branches in the Pema Lingpa lineage, under the patronage of Gangteng Tulku Rinpoche."}, {"p": "This edition presents the Tibetan texts in their original order, including the opening contents lists, introductory material, instructions, colophons and embedded lettering. The black and blue text distinction is preserved in both reading themes."}], "howTo": [{"p": "Select **E** or **Wam** to read a volume continuously. **Index** lists the individual texts from both volumes; expand a volume and select a Tibetan title to jump to that text."}, {"p": "Select the **page icon** between Faster (+) and Fullscreen to turn pages without animation. Swipe left for the next page or right for the previous page. Use the arrows below the text, tap the left or right edge, or use the arrow keys, Page Up/Down, or Space (Shift+Space to go back). Pages keep whole lines and adapt to portrait, landscape, and text size changes. Select the page icon again to return to scrolling. Automatic and tilt scrolling are paused in page mode."}, {"p": "Use **Play/Pause** to start or stop automatic scrolling, and **Slower** or **Faster** to adjust its speed. Touching or manually scrolling the page temporarily pauses automatic movement."}, {"p": "**Tilt scroll** moves the text as you change the angle of your device. It may ask for motion access when first enabled. Automatic scrolling and tilt scrolling are used separately."}, {"p": "Use **Fullscreen** to hide the header and bottom options. Only the expand/contract icon remains; tap it to restore the controls. In page mode, edge taps and keyboard page turns still work in fullscreen. The text size controls adjust the lettering. Pinch to decrease the size by 1, or spread two fingers to increase it by 1, once per gesture in either reading mode. The sun/moon button switches themes. **Help** labels the visible controls."}, {"p": "The **up arrow** returns to the beginning of the current title. Tap it again to go to the preceding title; further taps continue backward through the volume."}, {"p": "This edition contains Tibetan text only. Translations and phonetic pronunciation will be added in future editions."}], "welcome": [{"p": "The **Ewam Collection** brings together the E and Wam volumes of Tibetan liturgies in the Pema Lingpa lineage, used at Gangteng Monastery and its branches."}, {"p": "Read either volume continuously, or open the **Index** to find an individual text."}]}};
 
 function introBundle() {
   const base = INTRO_L10N[state.lang] || INTRO_L10N.en;
