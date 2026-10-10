@@ -3,12 +3,13 @@
   position:relative; min-width:0; gap:3px;
 }
 .header-title-group .header-title { min-width:0; }
+.collection-heading { margin:0; min-width:0; }
 .collection-btn {
-  display:flex; align-items:center; justify-content:center; width:30px; height:32px;
+  display:flex; align-items:center; justify-content:center; gap:3px; min-height:32px; padding:0 3px;
   flex:none; border:0; border-radius:var(--radius-sm); background:transparent;
   color:var(--accent); cursor:pointer;
 }
-.collection-btn svg { width:16px; height:16px; }
+.collection-btn svg { width:16px; height:16px; flex:none; }
 .collection-btn:hover { background:var(--accent-10); }
 .collection-btn:focus-visible { outline:none; box-shadow:var(--ring); }
 .collection-menu {
@@ -41,7 +42,7 @@
 .offline-status { padding:8px 12px; font:11px/1.5 'Inter',sans-serif; color:var(--text-muted); }
 @media(max-width:380px) {
   .header-title-group { gap:0; }
-  .collection-btn { width:24px; }
+  .collection-btn { gap:0; }
   .header-inner { grid-template-columns:auto minmax(0,1fr) auto; }
 }
 /* Keep landscape reading space and allow the collection picker to fit. */

@@ -14,7 +14,7 @@ instruction runs are retained. Source files outside this repo are not modified.
 
 On the first visit, the original Ewam artwork leads to a choice of **E Wam**
 or **Prayer Collection**. Returning readers open directly at their saved place.
-The arrow beside the title and the collection buttons in the **Index** both
+The title dropdown and the collection buttons in the **Index** both
 switch collections. E and Wam remain separate volumes within E Wam.
 Each collection remembers its own source character and volume, so switching,
 reopening, resizing and rotating can restore the reading position.

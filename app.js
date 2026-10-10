@@ -417,7 +417,8 @@ let indexLocationForce = false;
 
 function indexTitle(sec) {
   // Abbreviate the navigation label only. Source paragraphs keep the full title.
-  return sectionTitle(sec).replace(/ཞེས་\s*བྱ་བ་\s*བཞུགས་སོ[།༔]*/gu, '').trim();
+  return sectionTitle(sec).replace(/^\s*༄༅།\s*།\s*/u, '')
+    .replace(/ཞེས་\s*བྱ་བ་\s*བཞུགས་སོ[།༔]*/gu, '').trim();
 }
 
 function renderIndex() {
@@ -1872,7 +1873,7 @@ const INTRO_L10N = {"en": {"about": [{"p": "The **Ewam Collection** is a digital
 
 function introBundle() {
   const base = INTRO_L10N[state.lang] || INTRO_L10N.en;
-  const shared = [{p:'Choose **E Wam** or **Prayer Collection** using the arrow beside the title, or the collection buttons in the **Index**. Each collection remembers its own reading position. Both collections and the fonts download automatically for offline reading.'}, ...base.howTo.slice(1)];
+  const shared = [{p:'Choose **E Wam** or **Prayer Collection** using the title dropdown, or the collection buttons in the **Index**. Each collection remembers its own reading position. Both collections and the fonts download automatically for offline reading.'}, ...base.howTo.slice(1)];
   return state.collection === 'PRAYERS' ? {
     about:[{p:'The **Prayer Collection** presents the prayers from the Sangag Choling Prayer Book in their original order, with chapter headings and smaller instruction text preserved. The opening publication material and original contents pages are omitted from this edition.'}],
     howTo:shared,

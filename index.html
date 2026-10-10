@@ -2302,11 +2302,13 @@
       </div>
 
       <div class="header-title-group">
-        <h1 class="header-title" data-i18n="appTitle">Ewam Collection</h1>
+        <h1 class="collection-heading">
         <button type="button" class="collection-btn" id="collectionBtn" onclick="toggleCollectionMenu()"
                 aria-label="Choose collection" title="Choose collection" aria-expanded="false" aria-controls="collectionMenu">
+          <span class="header-title" data-i18n="appTitle">Ewam Collection</span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
         </button>
+        </h1>
         <div class="collection-menu" id="collectionMenu" aria-label="Collections" hidden>
           <button type="button" data-collection="EWAM" onclick="switchCollection('EWAM')">E Wam</button>
           <button type="button" data-collection="PRAYERS" onclick="switchCollection('PRAYERS')">Prayer Collection</button>
