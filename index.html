@@ -1203,6 +1203,7 @@
       filter: blur(3px);
       opacity: 0.38;
     }
+    body.help-active .scroll-top-btn { transition: none; }
 
     .help-overlay {
       position: fixed;
@@ -1239,15 +1240,16 @@
       inset: 0;
       pointer-events: none;
     }
-    /* Connectors below, opaque labels above: a line running past an
-       intervening row is hidden by that label, not drawn through it. */
+    /* Connectors route through the gaps between the opaque labels. */
     .help-wires  { z-index: 1; }
     .help-labels { z-index: 2; }
 
     .help-wire {
-      position: absolute;
-      width: 1px;
-      background: color-mix(in srgb, var(--accent) 45%, transparent);
+      fill: none;
+      stroke: color-mix(in srgb, var(--accent) 65%, transparent);
+      stroke-width: 1;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .help-label {
@@ -1258,7 +1260,9 @@
       line-height: 1.15;
       text-transform: uppercase;
       letter-spacing: var(--ls-caps);
-      white-space: nowrap;
+      width: max-content;
+      max-width: min(16rem, calc(100vw - 12px));
+      white-space: normal;
       color: var(--accent);
       background: var(--card);
       border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
@@ -2172,6 +2176,7 @@
       z-index:45; display:flex; align-items:center; justify-content:space-between; gap:12px;
       width:min(20rem,calc(100% - 32px)); height:36px; background:var(--bg); }
     .page-navigation .bar-btn { width:40px; height:32px; }
+    .paged-reading .scroll-top-btn { bottom:calc(var(--reader-bar-h,74px) + 48px); }
     .page-position { font:12px/1.5 'Inter',sans-serif; color:var(--text-muted); text-align:center; }
     html.paged-reading, .paged-reading body { height:100%; overflow:hidden; overflow-anchor:none; }
     .paged-reading *, .paged-reading *::before, .paged-reading *::after {
@@ -2410,7 +2415,7 @@
        data-i18n-aria="helpTitle" aria-label="Help" hidden>
     <button type="button" class="help-dismiss" id="helpDismiss" onclick="closeHelp()"
             data-i18n-aria="helpDismiss" aria-label="Tap anywhere to close"></button>
-    <div class="help-wires" id="helpWires" aria-hidden="true"></div>
+    <svg class="help-wires" id="helpWires" width="100%" height="100%" aria-hidden="true"></svg>
     <div class="help-labels" id="helpLabels" aria-hidden="true"></div>
     <div class="help-hint" id="helpHint" data-i18n="helpDismiss" aria-hidden="true">Tap anywhere to close</div>
   </div>

@@ -109,4 +109,6 @@ The preview serves the app at `http://127.0.0.1:4173/Ewam/`. Set
 Checks cover E/Wam line boundaries and reader controls, both collection pickers,
 independent scroll/page bookmarks, reloading, keyboard navigation, prayer search,
 phone/landscape layouts, and offline reopening/switching under a project path.
+Help checks cover label/control collisions, connectors ending within 3px of
+icons, routing around other labels and controls, rotation, and dismissal.
 Screenshots are written to `test-results/`.

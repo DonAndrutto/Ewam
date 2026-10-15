@@ -72,6 +72,7 @@ const UI_STRINGS = {
        the overlay exists to spell out. */
     helpTitle: 'Help',
     helpDismiss: 'Tap anywhere to close',
+    helpBeginning: 'Beginning of title',
     helpTib: 'Tibetan',
     helpPho: 'Phonetics',
     helpEng: 'Translation'
@@ -1619,7 +1620,7 @@ const HELP_TARGETS = [
   { sel: '.tab-btn[data-tab="E"]',              key: 'tabE' },
   { sel: '.tab-btn[data-tab="INDEX"]',             key: 'tabIndex' },
   { sel: '.tab-btn[data-tab="WAM"]',           key: 'tabWam' },
-  { sel: '#scrollTopBtn',                          key: 'scrollTop' },
+  { sel: '#scrollTopBtn',                          key: 'helpBeginning' },
   { sel: '.bar-btn[onclick="changeSpeed(-1)"]',    key: 'barSlower' },
   { sel: '#btnPlay',                               key: 'barPlayPause' },
   { sel: '.bar-btn[onclick="changeSpeed(1)"]',     key: 'barFaster' },
@@ -1633,8 +1634,8 @@ const HELP_TARGETS = [
 
 const HELP_PAD = 6;      /* keep a label this far off the viewport edge */
 const HELP_GUTTER = 8;   /* clear space between two labels in one row */
-const HELP_BAR_GAP = 6;  /* bar to the first row of labels */
-const HELP_ROW_GAP = 4;  /* row to row */
+const HELP_BAR_GAP = 12; /* bar to the first row of labels */
+const HELP_ROW_GAP = 8;  /* row to row, including room for connectors */
 
 let helpOpen = false;
 let helpPrevFocus = null;
@@ -1642,6 +1643,8 @@ let helpResumeAuto = false;
 let helpResumeTilt = false;
 let helpScrollX = 0;
 let helpScrollY = 0;
+let helpResized = false;
+let helpLayoutFrame = 0;
 
 /* On screen for real, not merely present in the document. */
 function helpOnScreen(el) {
@@ -1658,43 +1661,140 @@ function helpOnScreen(el) {
          r.left < window.innerWidth && r.top < window.innerHeight;
 }
 
-/* Greedy row packing: sorted by centre x, each label goes into the
-   lowest row — the one nearest the bar — whose occupied spans it
-   clears by the gutter. The result is a staircase, not a grid. */
-function helpPackRows(items, vw) {
-  items.sort((a, b) => a.cx - b.cx);
-  const rows = [];
+function helpIntersects(a, b, gap = 0) {
+  return a.left < b.right + gap && a.right > b.left - gap &&
+         a.top < b.bottom + gap && a.bottom > b.top - gap;
+}
+
+/* Keep labels outside the controls, including the floating title-return
+   and page-navigation buttons. Each row is measured rather than assumed. */
+function helpPackRows(items, vw, edge, direction, obstacles) {
+  items.sort((a, b) => direction<0 && innerHeight<420 ? b.w-a.w || a.cx-b.cx : a.cx-b.cx);
+  const height = Math.max(0, ...items.map(item => item.h));
   items.forEach(item => {
     const left = Math.max(HELP_PAD, Math.min(item.cx - item.w / 2, vw - HELP_PAD - item.w));
-    const from = left - HELP_GUTTER;
-    const to = left + item.w + HELP_GUTTER;
-    let r = 0;
-    while (rows[r] && rows[r].some(span => from < span[1] && to > span[0])) r++;
-    if (!rows[r]) rows[r] = [];
-    rows[r].push([left, left + item.w]);
-    item.left = left;
-    item.row = r;
+    const base = direction > 0 ? edge : Math.min(edge, item.control.top);
+    let row = 0, rect;
+    do {
+      const offset = HELP_BAR_GAP + row * (height + HELP_ROW_GAP);
+      const top = direction > 0 ? base + offset : base - offset - item.h;
+      const positions = innerHeight<420 ? [left,
+        ...obstacles.flatMap(r=>[r.left-HELP_GUTTER-item.w,r.right+HELP_GUTTER])]
+        .filter(x=>x>=HELP_PAD && x+item.w<=vw-HELP_PAD && Math.abs(x-left)<=64)
+        .sort((a,b)=>Math.abs(a-left)-Math.abs(b-left)) : [left];
+      const candidates = positions.map(x=>({left:x,right:x+item.w,top,bottom:top+item.h}));
+      rect = candidates.find(candidate=>!obstacles.some(other=>helpIntersects(candidate,other,HELP_GUTTER))) || candidates[0];
+      row++;
+    } while (rect.top >= HELP_PAD && obstacles.some(other => helpIntersects(rect, other, HELP_GUTTER)));
+    /* In a short landscape viewport, use a free horizontal gap instead
+       of continuing the staircase off the top of the screen. */
+    if (rect.top < HELP_PAD || rect.bottom > innerHeight-HELP_PAD) {
+      const xs = [left, HELP_PAD, vw-HELP_PAD-item.w,
+        ...obstacles.flatMap(r=>[r.left-HELP_GUTTER-item.w,r.right+HELP_GUTTER])];
+      const ys = [edge+direction*HELP_BAR_GAP-(direction<0?item.h:0),
+        ...obstacles.flatMap(r=>[r.top-HELP_GUTTER-item.h,r.bottom+HELP_GUTTER])];
+      let best = Infinity;
+      for (const x of xs) for (const y of ys) {
+        const candidate={left:x,right:x+item.w,top:y,bottom:y+item.h};
+        if (x<HELP_PAD || candidate.right>vw-HELP_PAD || y<HELP_PAD || candidate.bottom>innerHeight-HELP_PAD) continue;
+        if (obstacles.some(other=>helpIntersects(candidate,other,HELP_GUTTER))) continue;
+        const headerPenalty=direction<0 && y<document.getElementById('stickyStack').getBoundingClientRect().bottom+HELP_BAR_GAP ? 10000 : 0;
+        const cost=headerPenalty+Math.abs(x-left)+4*Math.abs(y-(base+direction*HELP_BAR_GAP-(direction<0?item.h:0)));
+        if (cost<best) {best=cost;rect=candidate;}
+      }
+    }
+    item.el.style.left = rect.left + 'px';
+    item.el.style.top = rect.top + 'px';
+    item.label = rect;
+    obstacles.push(rect);
   });
-  return rows.length;
 }
 
-function helpWire(layer, cx, from, to) {
-  const el = document.createElement('div');
-  el.className = 'help-wire';
-  el.style.left = Math.round(cx) + 'px';
-  el.style.top = Math.round(Math.min(from, to)) + 'px';
-  el.style.height = Math.max(0, Math.round(Math.abs(to - from))) + 'px';
-  layer.appendChild(el);
+/* SVG bounds reach the visible icon, instead of the much larger hit area.
+   Tabs include their lettering; a plain text button uses its own outline. */
+function helpTargetRect(el) {
+  if (!el.matches('.bar-btn, .tab-btn, #scrollTopBtn, #introBtn')) return el.getBoundingClientRect();
+  const parts = [...el.querySelectorAll('svg, .tab-syllable, [data-i18n]')].filter(helpOnScreen);
+  const rects = (parts.length ? parts : [el]).map(part => {
+    if (part.tagName.toLowerCase() !== 'svg') return part.getBoundingClientRect();
+    const box=part.getBBox(), matrix=part.getScreenCTM();
+    if (!matrix) return part.getBoundingClientRect();
+    const corners=[[box.x,box.y],[box.x+box.width,box.y],[box.x,box.y+box.height],[box.x+box.width,box.y+box.height]]
+      .map(([x,y])=>new DOMPoint(x,y).matrixTransform(matrix));
+    return {left:Math.min(...corners.map(p=>p.x)),right:Math.max(...corners.map(p=>p.x)),
+      top:Math.min(...corners.map(p=>p.y)),bottom:Math.max(...corners.map(p=>p.y))};
+  });
+  return {left:Math.min(...rects.map(r => r.left)), right:Math.max(...rects.map(r => r.right)),
+    top:Math.min(...rects.map(r => r.top)), bottom:Math.max(...rects.map(r => r.bottom))};
 }
 
-function helpPlaceHint(hint, vw, bandTop, bandBottom) {
-  const r = hint.getBoundingClientRect();
-  hint.style.left = Math.max(HELP_PAD, Math.round((vw - r.width) / 2)) + 'px';
-  const room = bandBottom - bandTop;
-  const y = room >= r.height
-    ? bandTop + (room - r.height) / 2            /* centred in the quiet band */
-    : bandBottom - r.height - HELP_ROW_GAP;      /* no band left: tuck it above */
-  hint.style.top = Math.round(Math.max(HELP_PAD, y)) + 'px';
+/* Find an orthogonal path through the gaps between labels and controls.
+   The endpoint stays 3px off the actual icon. Multiple entry sides allow
+   header connectors to go around the search field and intervening tabs. */
+function helpRoute(label, target, obstacles, vw, vh) {
+  const anchors = r => [
+    {x:(r.left+r.right)/2, y:r.top-3}, {x:(r.left+r.right)/2, y:r.bottom+3},
+    {x:r.left-3, y:(r.top+r.bottom)/2}, {x:r.right+3, y:(r.top+r.bottom)/2}
+  ];
+  const starts = anchors(label), ends = anchors(target);
+  const xs = [...new Set([2, vw-2, ...starts.concat(ends).map(p=>p.x),
+    ...obstacles.flatMap(r=>[r.left-1,r.right+1])])].filter(x=>x>=1 && x<=vw-1).sort((a,b)=>a-b);
+  const ys = [...new Set([2, vh-2, ...starts.concat(ends).map(p=>p.y),
+    ...obstacles.flatMap(r=>[r.top-1,r.bottom+1])])].filter(y=>y>=1 && y<=vh-1).sort((a,b)=>a-b);
+  const nx = xs.length, count = nx*ys.length;
+  const point = n => ({x:xs[n%nx], y:ys[Math.floor(n/nx)]});
+  const index = p => { const x=xs.indexOf(p.x), y=ys.indexOf(p.y); return x<0 || y<0 ? -1 : y*nx+x; };
+  const blocked = p => obstacles.some(r=>p.x>=r.left && p.x<=r.right && p.y>=r.top && p.y<=r.bottom);
+  const clear = (a,b) => !obstacles.some(r=>a.y===b.y
+    ? a.y>=r.top && a.y<=r.bottom && Math.max(a.x,b.x)>r.left && Math.min(a.x,b.x)<r.right
+    : a.x>=r.left && a.x<=r.right && Math.max(a.y,b.y)>r.top && Math.min(a.y,b.y)<r.bottom);
+  const goals = new Set(ends.filter(p=>!blocked(p)).map(index).filter(n=>n>=0));
+  const distance = new Float64Array(count*2).fill(Infinity);
+  const parent = new Int32Array(count*2).fill(-1);
+  const heap = [];
+  const push = entry => {
+    let i=heap.length; heap.push(entry);
+    while (i>0) { const p=(i-1)>>1; if (heap[p].score<=entry.score) break; heap[i]=heap[p]; i=p; }
+    heap[i]=entry;
+  };
+  const pop = () => {
+    const first=heap[0], last=heap.pop();
+    if (heap.length) {
+      let i=0;
+      while (i*2+1<heap.length) {
+        let c=i*2+1;
+        if (c+1<heap.length && heap[c+1].score<heap[c].score) c++;
+        if (heap[c].score>=last.score) break;
+        heap[i]=heap[c]; i=c;
+      }
+      heap[i]=last;
+    }
+    return first;
+  };
+  const estimate = p => Math.min(...ends.map(end=>Math.abs(end.x-p.x)+Math.abs(end.y-p.y)));
+  starts.filter(p=>!blocked(p)).forEach(p=>{
+    const n=index(p); if (n<0) return;
+    for (let dir=0;dir<2;dir++) { distance[n*2+dir]=0; push({state:n*2+dir,cost:0,score:estimate(p)}); }
+  });
+  while (heap.length) {
+    const current=pop(), state=current.state, n=Math.floor(state/2), dir=state%2;
+    if (current.cost!==distance[state]) continue;
+    if (goals.has(n)) {
+      const path=[];
+      for (let s=state;s>=0;s=parent[s]) path.push(point(Math.floor(s/2)));
+      return path.reverse().filter((p,i,all)=>i===0 || i===all.length-1 ||
+        (all[i-1].x!==all[i+1].x && all[i-1].y!==all[i+1].y));
+    }
+    const p=point(n), x=n%nx;
+    for (const next of [x>0?n-1:-1,x<nx-1?n+1:-1,n-nx,n+nx]) {
+      if (next<0 || next>=count) continue;
+      const q=point(next), nextDir=p.y===q.y?0:1, s=next*2+nextDir;
+      const cost=current.cost+Math.abs(q.x-p.x)+Math.abs(q.y-p.y)+(dir===nextDir?0:10);
+      if (cost>=distance[s] || blocked(q) || !clear(p,q)) continue;
+      distance[s]=cost; parent[s]=state; push({state:s,cost,score:cost+estimate(q)});
+    }
+  }
+  return [];
 }
 
 function layoutHelp() {
@@ -1717,7 +1817,7 @@ function layoutHelp() {
     const el = document.querySelector(target.sel);
     if (!helpOnScreen(el)) return;
     const r = el.getBoundingClientRect();
-    const item = { cx: r.left + r.width / 2, top: r.top, bottom: r.bottom, text: t(target.key) };
+    const item = { cx: r.left + r.width / 2, control:r, target:helpTargetRect(el), node:el, selector:target.sel, text:t(target.key) };
     (stackLive && stack.contains(el) ? chrome : bottom).push(item);
   });
 
@@ -1731,6 +1831,7 @@ function layoutHelp() {
     const el = document.createElement('span');
     el.className = 'help-label';
     el.textContent = item.text;
+    el.dataset.helpTarget = item.selector;
     el.style.left = '0px';
     el.style.top = '0px';
     labels.appendChild(el);
@@ -1742,40 +1843,33 @@ function layoutHelp() {
     item.h = r.height;
   });
 
-  /* The chrome is one slab: its labels hang below it, and each wire
-     rises to its underside at the control's own centre x. Stopping at
-     the slab is what keeps a header wire from being drawn across the
-     tab bar underneath it. */
-  let chromeBottom = stackLive ? stackRect.bottom : 0;
-  if (chrome.length) {
-    const rows = helpPackRows(chrome, vw);
-    const h = Math.max.apply(null, chrome.map(item => item.h));
-    chrome.forEach(item => {
-      const top = stackRect.bottom + HELP_BAR_GAP + item.row * (h + HELP_ROW_GAP);
-      item.el.style.left = item.left + 'px';
-      item.el.style.top = top + 'px';
-      helpWire(wires, item.cx, stackRect.bottom, top);
-    });
-    chromeBottom = stackRect.bottom + HELP_BAR_GAP + rows * h + (rows - 1) * HELP_ROW_GAP;
-  }
+  const controls = [...document.querySelectorAll('#stickyStack button, #readerSearch, #scrollTopBtn, .reader-toolbar .bar-btn, #pageNavigation')]
+    .filter(helpOnScreen).map(node=>({node, ...node.getBoundingClientRect().toJSON()}));
+  const occupied = controls.slice();
+  helpPackRows(chrome, vw, stackRect.bottom, 1, occupied);
+  const toolbar = document.querySelector('.reader-toolbar').getBoundingClientRect();
+  helpPackRows(bottom, vw, toolbar.top, -1, occupied);
 
-  /* The bar and the back-to-top button beside it: labels stand above,
-     rows building upward away from the bar. */
-  let bottomTop = vh;
-  if (bottom.length) {
-    const edge = Math.min.apply(null, bottom.map(item => item.top));
-    const rows = helpPackRows(bottom, vw);
-    const h = Math.max.apply(null, bottom.map(item => item.h));
-    bottom.forEach(item => {
-      const top = edge - HELP_BAR_GAP - (item.row + 1) * h - item.row * HELP_ROW_GAP;
-      item.el.style.left = item.left + 'px';
-      item.el.style.top = top + 'px';
-      helpWire(wires, item.cx, top + h, edge);
-    });
-    bottomTop = edge - HELP_BAR_GAP - rows * h - (rows - 1) * HELP_ROW_GAP;
-  }
+  const chromeBottom = Math.max(stackLive?stackRect.bottom:0, ...chrome.map(item=>item.label.bottom));
+  const bottomTop = Math.min(vh, ...bottom.map(item=>item.label.top));
+  const hintRect = hint.getBoundingClientRect();
+  hint.style.display = bottomTop-chromeBottom >= hintRect.height+HELP_ROW_GAP*2 ? '' : 'none';
+  hint.style.left = Math.max(HELP_PAD,(vw-hintRect.width)/2)+'px';
+  hint.style.top = ((chromeBottom+bottomTop-hintRect.height)/2)+'px';
 
-  helpPlaceHint(hint, vw, chromeBottom, bottomTop);
+  wires.setAttribute('viewBox', '0 0 '+vw+' '+vh);
+  const inflate = (r,gap) => ({left:r.left-gap,right:r.right+gap,top:r.top-gap,bottom:r.bottom+gap});
+  all.forEach(item=>{
+    const obstacles = controls.filter(control=>control.node!==item.node)
+      .map(control=>inflate(control.node.id==='pageNavigation'?control:helpTargetRect(control.node),2))
+      .concat(all.map(other=>inflate(other.label,2)), [inflate(item.target,1)]);
+    const path = helpRoute(item.label,item.target,obstacles,vw,vh);
+    const wire = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+    wire.setAttribute('class','help-wire');
+    wire.dataset.helpTarget = item.selector;
+    wire.setAttribute('points',path.map(p=>p.x+','+p.y).join(' '));
+    wires.appendChild(wire);
+  });
 }
 
 function openHelp() {
@@ -1792,8 +1886,10 @@ function openHelp() {
 
   helpScrollX = window.scrollX;
   helpScrollY = window.scrollY;
+  helpResized = false;
   helpPrevFocus = document.activeElement;
 
+  document.body.classList.add('help-active');
   document.getElementById('contentArea').classList.add('help-recede');
   document.getElementById('indexPanel').classList.add('help-recede');
 
@@ -1801,6 +1897,7 @@ function openHelp() {
   document.getElementById('helpBtn').setAttribute('aria-expanded', 'true');
 
   layoutHelp();
+  queueHelpLayout();
 
   document.getElementById('helpDismiss').focus({ preventScroll: true });
 
@@ -1816,6 +1913,7 @@ function closeHelp(restoreFocus) {
   document.getElementById('helpOverlay').hidden = true;
   document.getElementById('helpWires').textContent = '';
   document.getElementById('helpLabels').textContent = '';
+  document.body.classList.remove('help-active');
 
   document.getElementById('contentArea').classList.remove('help-recede');
   document.getElementById('indexPanel').classList.remove('help-recede');
@@ -1828,7 +1926,7 @@ function closeHelp(restoreFocus) {
   }
   helpPrevFocus = null;
 
-  if (window.scrollX !== helpScrollX || window.scrollY !== helpScrollY) {
+  if (!helpResized && (window.scrollX !== helpScrollX || window.scrollY !== helpScrollY)) {
     window.scrollTo(helpScrollX, helpScrollY);
   }
 
@@ -1843,12 +1941,27 @@ function toggleHelp() {
   helpOpen ? closeHelp() : openHelp();
 }
 
-/* Which controls exist depends on the viewport, so re-pack rather than
-   leave stale labels behind. */
-window.addEventListener('resize', () => { if (helpOpen) layoutHelp(); });
-window.addEventListener('orientationchange', () => {
-  if (helpOpen) setTimeout(() => { if (helpOpen) layoutHelp(); }, 120);
+/* Reader reflow updates page-navigation positions in its animation frame.
+   Measure after that work, so rotation never leaves stale endpoints. */
+function queueHelpLayout() {
+  if (!helpOpen || helpLayoutFrame) return;
+  helpLayoutFrame = requestAnimationFrame(() => {
+    helpLayoutFrame = 0;
+    if (helpOpen) layoutHelp();
+  });
+}
+window.addEventListener('resize', () => {
+  if (helpOpen) { helpResized = true; queueHelpLayout(); }
 });
+window.addEventListener('orientationchange', () => {
+  if (helpOpen) setTimeout(queueHelpLayout, 120);
+});
+document.fonts.ready.then(queueHelpLayout);
+if (typeof ResizeObserver !== 'undefined') {
+  const helpGeometry = new ResizeObserver(queueHelpLayout);
+  helpGeometry.observe(document.getElementById('stickyStack'));
+  helpGeometry.observe(document.querySelector('.bottom-bar'));
+}
 
 /* Routes a tap cannot intercept. */
 window.addEventListener('popstate', () => closeHelp(false));
