@@ -9,7 +9,7 @@ function files(dir) {
     .flatMap(entry => entry.isDirectory() ? files(dir + '/' + entry.name) : [dir + '/' + entry.name]);
 }
 const assets = ['index.html','app.js','collections.js','collections.css','gestures.js','manifest.webmanifest',
-  'content/ewam.js','content/prayers.js', ...files('assets/fonts'), ...files('assets/branding')].sort();
+  'content/ewam.js','content/prayers.js','content/prayer-about.js', ...files('assets/fonts'), ...files('assets/branding')].sort();
 const hash = crypto.createHash('sha256');
 for (const file of assets) hash.update(file).update(fs.readFileSync(path.join(root, file)));
 const version = hash.digest('hex').slice(0,16);

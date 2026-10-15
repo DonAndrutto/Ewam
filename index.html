@@ -190,9 +190,8 @@
        controls opposite it, and the title on a line of its own beneath
        them. Sharing a line with the controls would push the title off
        centre — at 56rem there is not room for it to sit on the true
-       centre with the controls beside it, and a longer translation of
-       Donate pushes it further still — so it gets the full width, which
-       also buys it the size to be read first. */
+       centre with the controls beside it, so the title gets the full
+       width, which also buys it the size to be read first. */
     .header-inner {
       max-width: 56rem;
       margin: 0 auto;
@@ -276,13 +275,6 @@
     .icon-btn:active { transform: scale(var(--press-scale)); }
     .icon-btn:focus { outline: none; }
     .icon-btn:focus-visible { outline: none; box-shadow: var(--ring); }
-
-    .header-divider {
-      width: 1px;
-      height: 16px;
-      background: var(--border);
-      margin: 0 0.15rem;
-    }
 
     /* ══════════════════════════════════════════
        LANGUAGE PICKER — the master language switch,
@@ -1349,9 +1341,7 @@
       .header-inner { padding: var(--sp-2); }
       .header-title { font-size: 1.05rem; }
       .header-controls { gap: 0.125rem; }
-      .header-divider { margin: 0 0.05rem; }
       .lang-btn,
-      .donate-link,
       .lang-select-btn { padding-left: 0.3rem; padding-right: 0.3rem; }
     }
 
@@ -1359,38 +1349,6 @@
       .bar-inner { justify-content: center; }
       .bar-group { margin: 2px 0; }
     }
-
-    /* ══════════════════════════════════════════
-       DONATION BANNER
-       ══════════════════════════════════════════ */
-    .donate-link {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.65rem;
-      font-weight: 600;
-      color: var(--accent);
-      text-decoration: none;
-      padding: var(--sp-1) var(--sp-2);
-      border: 1px solid var(--accent);
-      border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-      border-radius: var(--radius-sm);
-      letter-spacing: 0.02em;
-      transition: background var(--dur-2),
-                  color var(--dur-2),
-                  border-color var(--dur-2),
-                  transform var(--dur-1);
-      display: inline-flex;
-      align-items: center;
-    }
-
-    .donate-link:hover,
-    .donate-link:focus-visible {
-      background: var(--accent);
-      color: #fff;
-      border-color: var(--accent);
-    }
-    .donate-link:active { transform: scale(var(--press-scale)); }
-    .donate-link:focus { outline: none; }
-    .donate-link:focus-visible { outline: none; box-shadow: var(--ring); }
 
     /* ══════════════════════════════════════════
        REDUCED MOTION
@@ -1407,7 +1365,7 @@
       .index-panel { transition: opacity var(--dur-2) linear; transform: none !important; }
       .bar-btn:active, .lang-btn:active, .icon-btn:active,
       .nav-btn:active, .tab-btn:active, .scroll-top-btn:active,
-      .index-item:active, .donate-link:active { transform: none; }
+      .index-item:active { transform: none; }
     }
 
     /* Ewam entrance: original portrait/landscape artwork, revealed once. */
@@ -1973,6 +1931,17 @@
     .intro-body dd { margin: 0; color: var(--text-muted); line-height: var(--lh-snug); }
     .intro-body strong { font-weight: 600; }
     .intro-body em { font-style: italic; }
+    .intro-body a { color: var(--accent); overflow-wrap: anywhere; }
+    .intro-body a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .intro-body [lang="bo"],
+    .intro-body [lang="dz"] {
+      font-family: 'Jomolhari', serif;
+      font-size: 1.1rem;
+      font-weight: 400;
+      line-height: 2;
+      letter-spacing: normal;
+      text-transform: none;
+    }
 
     .intro-more {
       display: inline-flex;
@@ -2326,10 +2295,6 @@
         <button class="lang-btn active" id="btnPho" hidden onclick="toggleLang('phonetics')">PHO</button>
         <button class="lang-btn active" id="btnEng" hidden onclick="toggleLang('translation')">ENG</button>
 
-        <a class="donate-link" id="donateLink" data-i18n="donate" href="https://www.paypal.com/donate/?business=JZS5LVZKPPY5J&no_recurring=0&item_name=Help+fund+Dharma+translation+projects.&currency_code=USD" target="_blank" rel="noopener">Donate</a>
-
-        <div class="header-divider"></div>
-
         <button type="button" class="help-btn" id="helpBtn" onclick="toggleHelp()"
                 aria-haspopup="dialog" aria-expanded="false" aria-controls="helpOverlay"
                 data-i18n-title="helpTitle" data-i18n-aria="helpTitle"
@@ -2523,6 +2488,7 @@
 
 <script src="content/ewam.js" defer></script>
 <script src="content/prayers.js" defer></script>
+<script src="content/prayer-about.js" defer></script>
 <script src="collections.js" defer></script>
 <script src="gestures.js" defer></script>
 <script src="app.js" defer></script>

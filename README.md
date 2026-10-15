@@ -5,10 +5,14 @@ Monastery and its branches in the Pema Lingpa lineage, and the Sangag Choling
 Prayer Collection. Both use the same typography, themes and reading controls.
 
 The Prayer Collection contains the prayer body from the corrected v3 edition
-of the 2021 prayer book: 159 texts under 12 chapter headings. The front matter
-and printed contents pages are omitted. Its complete Tibetan title appears
-before the first prayer. Source characters, paragraph order and smaller
+of the 2021 prayer book: 159 texts under 12 chapter headings. The original
+publication credits, foreword and introduction appear in the Prayer Collection's
+**About the Text** section; printed contents pages are omitted. Its complete
+Tibetan title appears before the first prayer. Source characters, paragraph order and smaller
 instruction runs are retained. Source files outside this repo are not modified.
+
+Both collections credit the app author at translation@arybszleger.com and identify
+the app as **Experimental version 0.9**, separately from the original publishers.
 
 ## Reading
 
@@ -58,6 +62,7 @@ activate an update. Caches are isolated to this app's deployment scope.
 - `gestures.js`: shared swipe and pinch handling, ready for the other readers.
 - `content/ewam.js`: original E/Wam data, lettering images and contents links.
 - `content/prayers.js`: generated prayer data, source metadata and stable IDs.
+- `content/prayer-about.js`: original prayer book publication credits and introduction.
 - `assets/fonts/`: local versions of the original Google Fonts and OFL notices.
 - `manifest.webmanifest` / `sw.js`: installation and versioned offline cache.
 
@@ -68,8 +73,8 @@ python3 scripts/import-prayers.py /path/to/sangag-choling-choechey-2021-correcte
 ```
 
 The importer verifies that every prayer character remains in source order.
-The first chapter marks the body boundary; future front-matter support can be
-added without changing the existing paragraph identifiers.
+The first chapter marks the body boundary. The front matter displayed in About
+is maintained separately in `content/prayer-about.js`, preserving prayer identifiers.
 
 To refresh fonts (requires network access):
 

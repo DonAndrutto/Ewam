@@ -29,7 +29,6 @@ const UI_STRINGS = {
     langTib: 'TIB',
     langPho: 'PHO',
     langTrans: 'ENG',
-    donate: 'Donate',
 
     introduction: 'Introduction',
     introAbout: 'About the Text',
@@ -1615,7 +1614,6 @@ const HELP_TARGETS = [
   { sel: '#btnTib',                                key: 'helpTib' },
   { sel: '#btnPho',                                key: 'helpPho' },
   { sel: '#btnEng',                                key: 'helpEng' },
-  { sel: '#donateLink',                            key: 'donate' },
   { sel: '#helpBtn',                               key: 'helpTitle' },
   { sel: '#langSelectBtn',                         key: 'langMenu' },
   { sel: '.tab-btn[data-tab="E"]',              key: 'tabE' },
@@ -1866,19 +1864,26 @@ window.addEventListener('hashchange', () => closeHelp(false));
 //
 // Block shapes: { h } heading, { p } paragraph, { ul } list,
 // { dl } term / definition pairs. Inline **bold** and
-// *italic* are honoured; everything else is escaped.
+// *italic* are honoured; everything else is escaped. Headings and
+// paragraphs may specify a source language; paragraphs may link to a contact.
 // ══════════════════════════════════════════════════════
 
 const INTRO_L10N = {"en": {"about": [{"p": "The **Ewam Collection** is a digital edition of the E and Wam volumes of liturgies used at Gangteng Monastery and its branches in the Pema Lingpa lineage, under the patronage of Gangteng Tulku Rinpoche."}, {"p": "This edition presents the Tibetan texts in their original order, including the opening contents lists, introductory material, instructions, colophons and embedded lettering. The black and blue text distinction is preserved in both reading themes."}], "howTo": [{"p": "Select **E** or **Wam** to read a volume continuously. **Index** lists the individual texts from both volumes; expand a volume and select a Tibetan title to jump to that text."}, {"p": "Select the **page icon** between Faster (+) and Fullscreen to turn pages without animation. Swipe left for the next page or right for the previous page. Use the arrows below the text, tap the left or right edge, or use the arrow keys, Page Up/Down, or Space (Shift+Space to go back). Pages keep whole lines and adapt to portrait, landscape, and text size changes. Select the page icon again to return to scrolling. Automatic and tilt scrolling are paused in page mode."}, {"p": "Use **Play/Pause** to start or stop automatic scrolling, and **Slower** or **Faster** to adjust its speed. Touching or manually scrolling the page temporarily pauses automatic movement."}, {"p": "**Tilt scroll** moves the text as you change the angle of your device. It may ask for motion access when first enabled. Automatic scrolling and tilt scrolling are used separately."}, {"p": "Use **Fullscreen** to hide the header and bottom options. Only the expand/contract icon remains; tap it to restore the controls. In page mode, edge taps and keyboard page turns still work in fullscreen. The text size controls adjust the lettering. Pinch to decrease the size by 1, or spread two fingers to increase it by 1, once per gesture in page mode. In scroll mode, use the text size controls. The sun/moon button switches themes. **Help** labels the visible controls."}, {"p": "The **up arrow** returns to the beginning of the current title. Tap it again to go to the preceding title; further taps continue backward through the volume."}, {"p": "This edition contains Tibetan text only. Translations and phonetic pronunciation will be added in future editions."}], "welcome": [{"p": "The **Ewam Collection** brings together the E and Wam volumes of Tibetan liturgies in the Pema Lingpa lineage, used at Gangteng Monastery and its branches."}, {"p": "Read either volume continuously, or open the **Index** to find an individual text."}]}};
 
 function introBundle() {
   const base = INTRO_L10N[state.lang] || INTRO_L10N.en;
+  const appAbout = [
+    {h:'About the App'},
+    {p:'**Experimental version 0.9**'},
+    {p:'App author: translation@arybszleger.com', href:'mailto:translation@arybszleger.com'},
+    {p:'The app author is not the publisher or original distributor of the texts.'}
+  ];
   const shared = [{p:'Choose **E Wam** or **Prayer Collection** using the title dropdown, or the collection buttons in the **Index**. Each collection remembers its own reading position. Both collections and the fonts download automatically for offline reading.'}, ...base.howTo.slice(1)];
   return state.collection === 'PRAYERS' ? {
-    about:[{p:'The **Prayer Collection** presents the prayers from the Sangag Choling Prayer Book in their original order, with chapter headings and smaller instruction text preserved. The opening publication material and original contents pages are omitted from this edition.'}],
+    about:[{p:'The **Prayer Collection** presents the prayers from the 2021 Sangag Choling Prayer Book in their original order, with chapter headings and smaller instruction text preserved. The original publication credits, foreword and introduction are reproduced below. The printed contents pages are omitted from the reader.'}, ...appAbout, ...PRAYER_ABOUT],
     howTo:shared,
     welcome:[{p:'Choose a collection to begin. Your place is saved separately in each collection.'}]
-  } : {...base, howTo:[shared[0], base.howTo[0], ...shared.slice(1)], welcome:[{p:'Choose a collection to begin. Your place is saved separately in each collection.'}]};
+  } : {...base, about:[...base.about, ...appAbout], howTo:[shared[0], base.howTo[0], ...shared.slice(1)], welcome:[{p:'Choose a collection to begin. Your place is saved separately in each collection.'}]};
 }
 
 /* Escape first, then the two inline marks — bold before italic, so a
@@ -1891,8 +1896,9 @@ function introInline(s) {
 
 function introRender(blocks) {
   return blocks.map(b => {
-    if (b.h)  return '<h3>' + introInline(b.h) + '</h3>';
-    if (b.p)  return '<p>' + introInline(b.p) + '</p>';
+    const lang = b.lang ? ' lang="' + esc(b.lang) + '"' : '';
+    if (b.h)  return '<h3' + lang + '>' + introInline(b.h) + '</h3>';
+    if (b.p)  return '<p' + lang + '>' + (b.href ? '<a href="' + esc(b.href) + '">' + introInline(b.p) + '</a>' : introInline(b.p)) + '</p>';
     if (b.ul) return '<ul>' + b.ul.map(li => '<li>' + introInline(li) + '</li>').join('') + '</ul>';
     if (b.dl) return '<dl>' + b.dl.map(row =>
       '<dt>' + introInline(row[0]) + '</dt><dd>' + introInline(row[1]) + '</dd>').join('') + '</dl>';
