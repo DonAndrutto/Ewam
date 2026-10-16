@@ -543,6 +543,7 @@ let parkToken = 0;
 let navigationToken = 0;
 let parkFrame = 0;
 let parkedBlock = null;
+let parkScrollOffset = 0;
 
 function cancelPark() {
   parkToken++;
@@ -551,7 +552,16 @@ function cancelPark() {
   parkFrame = 0;
   if (parkedBlock) parkedBlock.classList.remove('position-target');
   parkedBlock = null;
+  parkScrollOffset = 0;
   document.documentElement.classList.remove('reader-positioning');
+}
+
+// Position correction follows intentional playback rather than undoing it.
+// Count the actual movement so clamping at either end cannot shift the anchor.
+function scrollReaderBy(top) {
+  const before = window.scrollY;
+  window.scrollBy({top, behavior:'instant'});
+  if (parkedBlock) parkScrollOffset += window.scrollY - before;
 }
 window.addEventListener('wheel', cancelPark, {passive:true});
 window.addEventListener('touchstart', cancelPark, {passive:true});
@@ -628,7 +638,7 @@ function holdReadingPosition(anchor, done) {
   const correct = () => {
     if (token !== parkToken || !block.isConnected) return;
     const rect = anchor.range ? anchor.range.getBoundingClientRect() : block.getBoundingClientRect();
-    const delta = rect.top - anchor.top;
+    const delta = rect.top - anchor.top + parkScrollOffset;
     if (Math.abs(delta) > 0.75) {
       const before = window.scrollY;
       window.scrollTo({top:Math.max(0, before + delta), behavior:'instant'});
@@ -1035,7 +1045,7 @@ function autoScrollLoop(ts) {
 
   if (scrollAccumulator >= 1) {
     const px = Math.floor(scrollAccumulator);
-    window.scrollBy({ top: px, behavior: 'auto' });
+    scrollReaderBy(px);
     scrollAccumulator -= px;
   }
 
@@ -1154,7 +1164,7 @@ function tiltLoop() {
     if (Math.abs(tiltScrollAccumulator) >= 1) {
       const pixelsToScroll = Math.trunc(tiltScrollAccumulator);
       tiltScrollAccumulator -= pixelsToScroll;
-      window.scrollBy({ top: pixelsToScroll, behavior: 'auto' });
+      scrollReaderBy(pixelsToScroll);
     }
   }
 
