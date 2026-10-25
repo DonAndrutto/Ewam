@@ -773,7 +773,9 @@ function renderSourceRuns(b) {
         '" alt="Tibetan lettering from the source text" decoding="async" />';
       return;
     }
-    const cls = [run.blue ? 'source-blue' : 'source-black', run.bold ? 'source-bold' : '',
+    // Prayer Collection instruction runs are smaller in the source; they share Ewam's blue note style.
+    const blue = run.blue || run.scale < 1;
+    const cls = [blue ? 'source-blue' : 'source-black', run.bold ? 'source-bold' : '',
       run.italic ? 'source-italic' : '', run.underline ? 'source-underline' : ''].filter(Boolean).join(' ');
     const text = run.text || '';
     const end = offset + text.length;
@@ -787,7 +789,7 @@ function renderSourceRuns(b) {
         html += '<a class="karchak-link" href="#' + link.target + '" data-target-bid="' + link.target +
           '" onclick="return jumpToSource(\'' + tab + '\',\'' + link.target + '\')">';
       }
-      const scale = Number.isFinite(run.scale) ? ' style="font-size:' + run.scale + 'em"' : '';
+      const scale = !blue && Number.isFinite(run.scale) ? ' style="font-size:' + run.scale + 'em"' : '';
       html += '<span class="' + cls + '"' + scale + '>' + esc(text.slice(start - offset, finish - offset)) + '</span>';
       if (link && finish === link.end) html += '</a>';
     }
