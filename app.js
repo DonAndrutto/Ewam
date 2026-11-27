@@ -361,6 +361,7 @@ function switchTab(tab, opts = {}) {
   });
   updateTabIndicator();
   if (changed) renderContent({animate:false});
+  else clearSearchHighlight();
   renderIndex();
   measureStackHeight();
   if (opts.restore) { restoreCollectionPosition(); return; }
@@ -520,6 +521,7 @@ function jumpToIndex(i) {
 function jumpToSource(tab, bid, query = '') {
   if (!TABS_DATA[tab]?.some(section => section.blocks.some(block => block.id === bid))) return false;
   cancelPark();
+  clearSearchHighlight();
   closeSearch();
   closeIndex();
   if (state.activeTab !== tab) switchTab(tab, {keepScroll:true});
@@ -532,8 +534,10 @@ function jumpToSource(tab, bid, query = '') {
     if (!block) return;
     // Materialize just the destination, then go straight there.
     block.classList.add('position-target');
-    const range = query ? findSearchRange(block, query) : null;
-    holdReadingPosition({block, range, top:readerLine()}, () => queueIndexLocationUpdate(true));
+    const match = query ? findSearchRange(block, query) : null;
+    if (match && CSS.highlights) CSS.highlights.set('search-match', new Highlight(match));
+    const anchor = match && characterRange(match.startContainer, match.startOffset);
+    holdReadingPosition({block, range:anchor, top:readerLine()}, () => queueIndexLocationUpdate(true));
   });
   return false;
 }
@@ -694,6 +698,7 @@ function renderContent(opts) {
   const area = document.getElementById('contentArea');
   const animate = !(opts && opts.animate === false);
 
+  clearSearchHighlight();
   let html = '';
 
   sections.forEach((sec, si) => {
@@ -1436,8 +1441,18 @@ let searchResults = [];
 let searchRecords = null;
 let searchQuery = '';
 
+const SEARCH_IGNORED = /[\u200B-\u200D\uFEFF]/g;
+
+function compactSearch(text) {
+  return text.normalize('NFC').replace(SEARCH_IGNORED, '').replace(/\s+/g, ' ').trim();
+}
+
 function normalizeSearch(text) {
-  return text.normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
+  return compactSearch(text).toLocaleLowerCase();
+}
+
+function clearSearchHighlight() {
+  CSS.highlights?.delete('search-match');
 }
 
 function closeSearch(restoreFocus = false) {
@@ -1448,7 +1463,7 @@ function closeSearch(restoreFocus = false) {
 }
 
 function searchSnippet(text, query) {
-  const compact = text.normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ').trim();
+  const compact = compactSearch(text);
   const at = compact.toLocaleLowerCase().indexOf(query);
   const start = Math.max(0, at - 45), end = Math.min(compact.length, at + query.length + 75);
   return (start ? '…' : '') + esc(compact.slice(start, at)) + '<mark>' + esc(compact.slice(at, at + query.length)) +
@@ -1463,7 +1478,7 @@ function runSearch() {
   const status = document.getElementById('searchStatus');
   searchQuery = normalizeSearch(input.value);
   document.getElementById('searchClear').hidden = !input.value;
-  if (!searchQuery) { searchResults = []; closeSearch(); return; }
+  if (!searchQuery) { searchResults = []; clearSearchHighlight(); closeSearch(); return; }
   closeIndex();
   closeHelp(false);
   if (!searchRecords) {
@@ -1491,29 +1506,50 @@ function runSearch() {
 function findSearchRange(block, query) {
   const root = block.querySelector('.tib');
   if (!root) return null;
-  // Map whitespace-normalized search offsets back to the unmodified source.
   const text = root.textContent;
-  let folded = '', sourceOffsets = [], rawOffset = 0;
-  for (const char of text) {
-    if (!/[\u200B-\u200D\uFEFF]/.test(char)) {
-      if (/\s/.test(char)) {
-        if (folded && !folded.endsWith(' ')) { folded += ' '; sourceOffsets.push(rawOffset); }
-      } else {
-        const normalized = char.normalize('NFC').toLocaleLowerCase();
-        folded += normalized;
-        for (let i = 0; i < normalized.length; i++) sourceOffsets.push(rawOffset);
+  const at = normalizeSearch(text).indexOf(query);
+  if (at < 0) return null;
+
+  // NFC can compose or reorder characters within one grapheme. Map changed
+  // graphemes as a unit and preserve the original offsets everywhere else.
+  const segments = Intl.Segmenter && text !== text.normalize('NFC') ?
+    new Intl.Segmenter().segment(text) : text.matchAll(/./gsu);
+  let start, end, foldedOffset = 0, previousSpace = true;
+  for (const part of segments) {
+    const {index} = part;
+    const segment = part.segment ?? part[0];
+    const normalized = segment.normalize('NFC');
+    const unchanged = normalized === segment;
+    let sourceOffset = index;
+    for (const char of normalized) {
+      const charStart = sourceOffset;
+      sourceOffset += char.length;
+      if (!char.replace(SEARCH_IGNORED, '')) continue;
+      const space = /\s/.test(char);
+      if (space && previousSpace) continue;
+      previousSpace = space;
+      foldedOffset += space ? 1 : char.toLocaleLowerCase().length;
+      if (start === undefined && foldedOffset > at) start = unchanged ? charStart : index;
+      if (foldedOffset >= at + query.length) {
+        end = unchanged ? sourceOffset : index + segment.length;
+        break;
       }
     }
-    rawOffset += char.length;
+    if (end !== undefined) break;
   }
-  const at = folded.indexOf(query);
-  if (at < 0) return null;
-  let remaining = sourceOffsets[at];
+  if (end === undefined) return null;
+
+  const range = document.createRange();
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  let node;
+  let offset = 0, node;
   while ((node = walker.nextNode())) {
-    if (remaining < node.length) return characterRange(node, remaining);
-    remaining -= node.length;
+    const next = offset + node.length;
+    if (start >= offset && start < next) range.setStart(node, start - offset);
+    if (end <= next) {
+      range.setEnd(node, end - offset);
+      return range;
+    }
+    offset = next;
   }
   return null;
 }
@@ -1530,6 +1566,7 @@ function openSearchResult(i) {
 const readerSearch = document.getElementById('readerSearch');
 readerSearch.addEventListener('input', () => {
   clearTimeout(searchTimer);
+  clearSearchHighlight();
   document.getElementById('searchClear').hidden = !readerSearch.value;
   if (!readerSearch.value.trim()) closeSearch();
   else searchTimer = setTimeout(runSearch, 180);

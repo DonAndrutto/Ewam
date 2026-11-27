@@ -164,14 +164,38 @@ async function main() {
     assert.equal(await page.locator('.index-item[aria-current="location"]').count(), 1);
     await page.locator('.index-item[data-index-tab="E"]').nth(2).click();
     await page.waitForFunction(() => state.activeTab === 'E');
-    await page.locator('#readerSearch').fill('བླ་མ');
+    // A single match can span both recitation text and a blue instruction.
+    const passage = 'ཐོབ་པར་བསམ༔ ཞེས་དམིགས་པ';
+    await page.locator('#readerSearch').fill(passage.replace(' ', '   '));
     await page.waitForFunction(() => searchResults.some(result => result.tab === 'WAM'));
     await page.locator('.search-result').filter({has:page.locator('.search-result-volume', {hasText:'Wam'})}).first().click();
-    await page.waitForFunction(() => state.activeTab === 'WAM' && document.getElementById('searchPanel').hidden);
-    assert.equal(await page.evaluate(() => readingPage.anchor.block.closest('.section-block').classList.contains('page-section')), true);
+    await page.waitForFunction(() => CSS.highlights.has('search-match'));
+    const highlighted = await page.evaluate(() => {
+      const [range] = CSS.highlights.get('search-match');
+      const rect = range.getClientRects()[0];
+      const area = document.getElementById('contentArea').getBoundingClientRect();
+      return {text:range.toString(), block:range.startContainer.parentElement.closest('.block').id,
+        spansRuns:range.startContainer !== range.endContainer,
+        visible:rect.left >= area.left && rect.right <= area.right && rect.top >= area.top && rect.bottom <= area.bottom};
+    });
+    assert.equal(await page.evaluate(() => state.activeTab === 'WAM' && document.getElementById('searchPanel').hidden), true);
+    assert.deepEqual(highlighted, {text:passage, block:'wam-p0076', spansRuns:true, visible:true});
     await page.locator('#btnPage').click();
     assert.equal(await page.evaluate(() => state.readingMode), 'scroll');
     assert.equal(await page.locator('.page-section').count(), 0);
+    assert.equal(await page.evaluate(() => CSS.highlights.has('search-match')), true, 'highlight survives a reading mode change');
+    await page.locator('#readerSearch').fill('བླ་མ');
+    await page.waitForFunction(() => searchQuery === 'བླ་མ' && searchResults.length > 0);
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => CSS.highlights.has('search-match') && parkFrame === 0);
+    const scrolled = await page.evaluate(() => {
+      const [range] = CSS.highlights.get('search-match');
+      return {text:range.toString(), atReaderLine:Math.abs(range.getClientRects()[0].top - readerLine()) < 2};
+    });
+    assert.deepEqual(scrolled, {text:'བླ་མ', atReaderLine:true});
+    await page.locator('#searchClear').click();
+    assert.equal(await page.evaluate(() => CSS.highlights.has('search-match')), false);
     await page.locator('#btnPage').click();
     await page.reload();
     await page.evaluate(() => document.fonts.ready);
